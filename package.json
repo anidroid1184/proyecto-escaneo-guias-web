@@ -1,0 +1,16 @@
+{
+  "name": "proyecto-escaneo-guias-web",
+  "version": "1.0.0",
+  "description": "Sistema web ligero para registrar ingresos y salidas de personas mediante escaneo de códigos de barras o ingreso manual. Accesible desde móvil y escritorio.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "devDependencies": {
+    "html5-qrcode": "^2.3.8"
+  }
+}

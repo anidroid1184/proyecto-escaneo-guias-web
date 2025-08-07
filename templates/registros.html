@@ -1,0 +1,54 @@
+{% extends 'base.html' %}
+{% block content %}
+<h2 class="mb-3">Registros de Acceso</h2>
+<form class="row g-2 mb-3" method="get">
+  <div class="col-md-2">
+    <input type="text" name="nombre" class="form-control" placeholder="Nombre" value="{{ request.args.get('nombre', '') }}">
+  </div>
+  <div class="col-md-2">
+    <input type="text" name="documento" class="form-control" placeholder="Documento" value="{{ request.args.get('documento', '') }}">
+  </div>
+  <div class="col-md-2">
+    <select name="tipo" class="form-select">
+      <option value="">Tipo</option>
+      <option value="entrada" {% if request.args.get('tipo') == 'entrada' %}selected{% endif %}>Entrada</option>
+      <option value="salida" {% if request.args.get('tipo') == 'salida' %}selected{% endif %}>Salida</option>
+    </select>
+  </div>
+  <div class="col-md-2">
+    <input type="date" name="fecha_inicio" class="form-control" value="{{ request.args.get('fecha_inicio', '') }}">
+  </div>
+  <div class="col-md-2">
+    <input type="date" name="fecha_fin" class="form-control" value="{{ request.args.get('fecha_fin', '') }}">
+  </div>
+  <div class="col-md-2 d-flex gap-2">
+    <button type="submit" class="btn btn-primary">Filtrar</button>
+    <a href="/registros" class="btn btn-secondary">Limpiar</a>
+    <a href="/export?{{ request.query_string.decode('utf-8') }}" class="btn btn-success">Exportar a Excel</a>
+  </div>
+</form>
+<table class="table table-striped table-bordered">
+  <thead>
+    <tr>
+      <th>Nombre</th>
+      <th>Documento</th>
+      <th>Código</th>
+      <th>Tipo</th>
+      <th>Fecha y Hora</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for r in registros %}
+    <tr>
+      <td>{{ r.persona.nombre }}</td>
+      <td>{{ r.persona.documento }}</td>
+      <td>{{ r.persona.codigo_barras }}</td>
+      <td>{{ r.tipo|capitalize }}</td>
+      <td>{{ r.timestamp.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+    </tr>
+    {% else %}
+    <tr><td colspan="5" class="text-center">No hay registros.</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

@@ -1,0 +1,25 @@
+{% extends 'base.html' %} {% block content %}
+<div class="row justify-content-center">
+  <div class="col-md-6">
+    <h2 class="mb-3">Cargar Personas desde Excel/CSV</h2>
+    <form action="/upload" method="post" enctype="multipart/form-data">
+      <div class="mb-3">
+        <label for="file" class="form-label">Archivo (.xlsx o .csv)</label>
+        <input
+          type="file"
+          name="file"
+          id="file"
+          class="form-control"
+          accept=".xlsx,.csv"
+          required
+        />
+      </div>
+      <button type="submit" class="btn btn-primary">Cargar</button>
+    </form>
+    <div class="alert alert-info mt-3">
+      El archivo debe tener columnas: <b>nombre</b>, <b>documento</b>,
+      <b>codigo_barras</b>.
+    </div>
+  </div>
+</div>
+{% endblock %}

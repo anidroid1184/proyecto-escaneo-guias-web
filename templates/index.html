@@ -1,0 +1,44 @@
+{% extends 'base.html' %} {% block content %}
+<div class="row justify-content-center">
+  <div class="col-md-6">
+    <h2 class="mb-3">Escaneo o Ingreso Manual</h2>
+    <div class="mb-3">
+      <label for="codigo-input" class="form-label">Código de barras</label>
+      <input
+        type="text"
+        id="codigo-input"
+        class="form-control"
+        placeholder="Escanea o ingresa el código manualmente"
+      />
+    </div>
+    <div class="mb-3 d-flex gap-2">
+      <button class="btn btn-primary" onclick="startScanner()">Escanear</button>
+      <button class="btn btn-success" onclick="submitManual()">
+        Registrar manualmente
+      </button>
+    </div>
+    <div id="reader" style="width: 100%; max-width: 400px"></div>
+    <div id="scan-message" class="mt-3"></div>
+  </div>
+</div>
+{% endblock %} {% block scripts %}
+<!-- Usar la versión local de html5-qrcode -->
+<script src="/static/js/html5-qrcode.min.js"></script>
+<script>
+  if (typeof Html5Qrcode === "undefined") {
+    document.getElementById("scan-message").innerHTML =
+      '<div class="alert alert-danger">No se pudo cargar la librería de escaneo. Verifica tu conexión o contacta al administrador.</div>';
+  }
+</script>
+<script src="/static/js/scanner.js"></script>
+<script>
+  function submitManual() {
+    const code = document.getElementById("codigo-input").value.trim();
+    if (!code) {
+      showError("Por favor ingresa un código.");
+      return;
+    }
+    submitCode(code);
+  }
+</script>
+{% endblock %}
