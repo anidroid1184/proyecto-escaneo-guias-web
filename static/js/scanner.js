@@ -89,7 +89,7 @@ function submitCode(code) {
     .then(data => {
         if (data.error) {
             showError(data.message || data.error); // Mostrar el mensaje de error del backend
-            if (data.error === 'guia_no_existente' || data.error === 'guia_no_esperada_en_sesion') {
+            if (data.error === 'unknown_package_detected') { // Actualizado para el nuevo tipo de error
                 showUnknownPackagePrompt(code, data.message); // Mostrar popup de confirmación
             }
         } else {
