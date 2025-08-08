@@ -16,6 +16,18 @@
             <button type="submit" class="btn btn-danger">Confirmar y Finalizar Sesión</button>
             <a href="{{ url_for('main.index') }}" class="btn btn-secondary ms-2">Cancelar</a>
         </form>
+
+        {% if summary %}
+        <div class="card mt-4 shadow-sm">
+            <div class="card-header bg-success text-white">Resumen de la Sesión Finalizada</div>
+            <div class="card-body">
+                <p class="card-text"><strong>Total de Paquetes Escaneados:</strong> <span class="badge bg-primary">{{ summary.total_scanned }}</span></p>
+                <p class="card-text"><strong>Paquetes Desconocidos Registrados:</strong> <span class="badge bg-warning text-dark">{{ summary.unknown }}</span></p>
+                <p class="card-text"><strong>Paquetes Faltantes (No Escaneados):</strong> <span class="badge bg-danger">{{ summary.missing }}</span></p>
+            </div>
+        </div>
+        {% endif %}
+
         {% else %}
         <div class="alert alert-info">No hay una sesión activa para finalizar.</div>
         <a href="{{ url_for('main.index') }}" class="btn btn-primary">Ir a Inicio</a>

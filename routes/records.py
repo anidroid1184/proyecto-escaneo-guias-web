@@ -125,12 +125,9 @@ def edit_guia_status(guia_id, session_id):
                 return jsonify({'error': 'Datos no proporcionados.'}), 400
 
             new_status = data.get('new_status')
-            scanned_code = data.get('scanned_code', '').strip()
-            scan_field_choice = data.get('scan_field_choice')
-
             updated_fields = {}
-            
-            # 1. Manejar actualización de estado
+
+            # Manejar actualización de estado
             if new_status and new_status in [
                 'RECIBIDO', 'NO RECIBIDO', 'NO ESPERADO', 'NO ESCANEADO'
             ]:
@@ -140,60 +137,101 @@ def edit_guia_status(guia_id, session_id):
             elif new_status:  # Si se envió un estado pero no es válido
                 return jsonify({'error': 'Estado no válido.'}), 400
 
-            # 2. Manejar actualización de código escaneado
-            if scanned_code:
-                scanned_code = sanitize_string(scanned_code)
-                
-                if scan_field_choice == 'tracking':
-                    guia.tracking = scanned_code
-                    updated_fields['tracking'] = scanned_code
-                elif scan_field_choice == 'guia_internacional':
-                    guia.guia_internacional = scanned_code
-                    updated_fields['guia_internacional'] = scanned_code
-                elif scan_field_choice == 'both':
-                    # Si se elige 'both', la lógica de intuición se aplica
-                    if scanned_code.startswith('TBA'):
-                        guia.tracking = scanned_code
-                        updated_fields['tracking'] = scanned_code
-                    elif scanned_code.startswith('BOG'):
-                        guia.guia_internacional = scanned_code
-                        updated_fields['guia_internacional'] = scanned_code
-                    else:
-                        # Si no se puede intuir, se actualiza el tracking por defecto
-                        guia.tracking = scanned_code
-                        updated_fields['tracking'] = scanned_code
-                else:
-                    # Si no se especifica el campo, aplicar la lógica de intuición
-                    if scanned_code.startswith('TBA'):
-                        guia.tracking = scanned_code
-                        updated_fields['tracking'] = scanned_code
-                    elif scanned_code.startswith('BOG'):
-                        guia.guia_internacional = scanned_code
-                        updated_fields['guia_internacional'] = scanned_code
-                    else:
-                        guia.tracking = scanned_code  # Por defecto, actualizar tracking
-                        updated_fields['tracking'] = scanned_code
-            
-            # Si no se realizó ninguna actualización, devolver un mensaje
             if not updated_fields:
                 return jsonify({
-                    'error': 'No se proporcionaron datos válidos para actualizar.'
+                    'error': ('No se proporcionaron datos válidos para '
+                              'actualizar el estado.')
                 }), 400
 
             db.session.commit()
-            
-            # Preparar la respuesta con los datos actualizados
+
             response_data = {
                 'success': True,
-                'message': 'Cambios guardados exitosamente.',
+                'message': 'Estado de guía actualizado exitosamente.',
                 'new_status': guia_status.status,
-                'tracking': guia.tracking,
-                'guia_internacional': guia.guia_internacional
+                'tracking': guia.tracking,  # Incluir para consistencia
+                'guia_internacional': guia.guia_internacional  # Incluir para consistencia
             }
             return jsonify(response_data)
         except Exception as e:
-            db.session.rollback() # Revertir cualquier cambio en caso de error
+            db.session.rollback()  # Revertir cualquier cambio en caso de error
             return jsonify({'error': f'Error interno del servidor: {str(e)}'}), 500
+    else:  # Esto maneja el método GET
+        return render_template('edit_guia_status.html', guia_status=guia_status,
+                               guia=guia, current_session=current_session)
 
-    return render_template('edit_guia_status.html', guia_status=guia_status,
-                           guia=guia, current_session=current_session)
+
+@records_bp.route('/update_guia_fields', methods=['POST'])
+def update_guia_fields():
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({'error': 'Datos no proporcionados.'}), 400
+
+        guia_id = data.get('guia_id', type=int)
+        scanned_code = data.get('scanned_code', '').strip()
+        field_type = data.get('field_type')
+
+        if not guia_id or not scanned_code or not field_type:
+            return jsonify({'error': ('Datos incompletos para la '
+                                      'actualización.')}), 400
+
+        guia = Guia.query.get(guia_id)
+        if not guia:
+            return jsonify({'error': 'Guía no encontrada.'}), 404
+
+        scanned_code = sanitize_string(scanned_code)
+        message = ""
+
+        if field_type == 'tracking':
+            if guia.tracking == scanned_code:
+                message = ("El Tracking ya es el mismo. No se realizó ningún "
+                           "cambio.")
+            else:
+                guia.tracking = scanned_code
+                message = "Tracking actualizado exitosamente."
+        elif field_type == 'guia_internacional':
+            if guia.guia_internacional == scanned_code:
+                message = ("La Guía Internacional ya es la misma. No se "
+                           "realizó ningún cambio.")
+            else:
+                guia.guia_internacional = scanned_code
+                message = "Guía Internacional actualizada exitosamente."
+        elif field_type == 'both':
+            # Lógica para reemplazar ambos si son diferentes
+            updated_tracking = False
+            updated_guia_internacional = False
+
+            if guia.tracking != scanned_code:
+                guia.tracking = scanned_code
+                updated_tracking = True
+            if guia.guia_internacional != scanned_code:
+                guia.guia_internacional = scanned_code
+                updated_guia_internacional = True
+            
+            if updated_tracking and updated_guia_internacional:
+                message = ("Tracking y Guía Internacional actualizados "
+                           "exitosamente.")
+            elif updated_tracking:
+                message = ("Tracking actualizado exitosamente (Guía "
+                           "Internacional ya era la misma).")
+            elif updated_guia_internacional:
+                message = ("Guía Internacional actualizada exitosamente "
+                           "(Tracking ya era el mismo).")
+            else:
+                message = "Ambos campos ya eran los mismos. No se realizó ningún cambio."
+        else:
+            return jsonify({'error': 'Tipo de campo no válido.'}), 400
+
+        db.session.commit()
+
+        return jsonify({
+            'success': True,
+            'message': message,
+            'tracking': guia.tracking,
+            'guia_internacional': guia.guia_internacional
+        })
+
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': f'Error interno del servidor: {str(e)}'}), 500

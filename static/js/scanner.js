@@ -24,8 +24,12 @@ function startScannerLogic(readerDivId) {
     }
 
     html5QrCodeInstance = new Html5Qrcode(readerDivId);
-    // Reducir fps para un escaneo más lento (1 fotograma cada 5 segundos)
-    const config = { fps: 0.2, qrbox: 250 }; 
+    // Configuración para escaneo continuo y mayor precisión
+    const config = { 
+        fps: 10, // Aumentar FPS para una detección más rápida
+        qrbox: { width: 300, height: 200 }, // Aumentar el tamaño del cuadro de escaneo
+        disableFlip: false // Permitir voltear la imagen si es necesario
+    }; 
 
     showScannerStatus("Iniciando escáner...");
 
@@ -33,9 +37,7 @@ function startScannerLogic(readerDivId) {
         { facingMode: "environment" },
         config,
         qrCodeMessage => {
-            // Detener el escáner después de un escaneo exitoso
-            html5QrCodeInstance.stop().catch(() => {});
-            html5QrCodeInstance = null;
+            // No detener el escáner; permitir escaneo continuo
             processScannedCode(qrCodeMessage);
         },
         errorMessage => {
@@ -88,19 +90,32 @@ function submitCode(code) {
         if (data.error) {
             showError(data.message || data.error); // Mostrar el mensaje de error del backend
             if (data.error === 'guia_no_existente' || data.error === 'guia_no_esperada_en_sesion') {
-                showRegisterPrompt(data.tracking, data.guia_internacional, data.message);
+                showUnknownPackagePrompt(code, data.message); // Mostrar popup de confirmación
             }
         } else {
             showSuccess(data.message); // Mostrar el mensaje de éxito del backend
             // Actualizar los conteos en tiempo real
             if (data.total_pending_packages !== undefined) {
                 document.querySelector('.card-body p:nth-child(1) .badge').textContent = data.total_pending_packages;
+                const mobileTotalPending = document.getElementById('mobile-total-pending');
+                if (mobileTotalPending) mobileTotalPending.textContent = data.total_pending_packages;
             }
             if (data.not_registered_packages !== undefined) {
                 document.querySelector('.card-body p:nth-child(2) .badge').textContent = data.not_registered_packages;
+                const mobileNotRegistered = document.getElementById('mobile-not-registered');
+                if (mobileNotRegistered) mobileNotRegistered.textContent = data.not_registered_packages;
             }
             if (data.missing_to_scan_packages !== undefined) {
                 document.querySelector('.card-body p:nth-child(3) .badge').textContent = data.missing_to_scan_packages;
+                const mobileMissingToScan = document.getElementById('mobile-missing-to-scan');
+                if (mobileMissingToScan) mobileMissingToScan.textContent = data.missing_to_scan_packages;
+            }
+            // Pausar el escáner brevemente después de un escaneo exitoso
+            if (html5QrCodeInstance) {
+                html5QrCodeInstance.pause();
+                setTimeout(() => {
+                    html5QrCodeInstance.resume();
+                }, 1000); // Pausa de 1 segundo
             }
         }
     })
@@ -156,7 +171,65 @@ function showRegisterPrompt(tracking, guia_internacional, message, messageDivId 
     }, 10000); // Mensaje visible por 10 segundos para dar tiempo a registrar
 }
 
-// Initial state setup
-document.addEventListener('DOMContentLoaded', () => {
-    showScannerStatus("Listo para escanear.");
-});
+function showUnknownPackagePrompt(code, message, messageDivId = 'scan-message') {
+    const msg = document.getElementById(messageDivId);
+    if (msg) {
+        msg.innerHTML = `<div class="alert alert-warning">
+            ${message} <br>
+            ¿Deseas registrar este paquete desconocido (${code})?
+            <button class="btn btn-sm btn-primary ms-2" onclick="confirmUnknownPackage('${code}')">Sí, registrar</button>
+            <button class="btn btn-sm btn-secondary ms-2" onclick="cancelUnknownPackage()">No, cancelar</button>
+        </div>`;
+    }
+    clearTimeout(scanMessageTimeout); // No limpiar automáticamente para que el usuario vea el mensaje
+}
+
+function confirmUnknownPackage(code) {
+    fetch('/register_unknown', { // Nueva ruta para registrar paquetes desconocidos
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code: code })
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.error) {
+            showError(data.message || data.error);
+        } else {
+            showSuccess(data.message);
+            // Actualizar los conteos en tiempo real
+            if (data.total_pending_packages !== undefined) {
+                document.querySelector('.card-body p:nth-child(1) .badge').textContent = data.total_pending_packages;
+                const mobileTotalPending = document.getElementById('mobile-total-pending');
+                if (mobileTotalPending) mobileTotalPending.textContent = data.total_pending_packages;
+            }
+            if (data.not_registered_packages !== undefined) {
+                document.querySelector('.card-body p:nth-child(2) .badge').textContent = data.not_registered_packages;
+                const mobileNotRegistered = document.getElementById('mobile-not-registered');
+                if (mobileNotRegistered) mobileNotRegistered.textContent = data.not_registered_packages;
+            }
+            if (data.missing_to_scan_packages !== undefined) {
+                document.querySelector('.card-body p:nth-child(3) .badge').textContent = data.missing_to_scan_packages;
+                const mobileMissingToScan = document.getElementById('mobile-missing-to-scan');
+                if (mobileMissingToScan) mobileMissingToScan.textContent = data.missing_to_scan_packages;
+            }
+        }
+    })
+    .catch(() => {
+        showError('Error de comunicación con el servidor al registrar paquete desconocido.');
+    })
+    .finally(() => {
+        // Reanudar el escáner después de la confirmación o cancelación
+        startScannerLogic('reader'); 
+    });
+}
+
+function cancelUnknownPackage() {
+    showScannerStatus("Registro de paquete desconocido cancelado.", 'info');
+    // Reanudar el escáner
+    startScannerLogic('reader');
+}
+
+// Initial state setup (moved to index.html for automatic start)
+// document.addEventListener('DOMContentLoaded', () => {
+//     showScannerStatus("Listo para escanear.");
+// });

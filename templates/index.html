@@ -4,13 +4,24 @@
     <h2 class="mb-3 text-center">Escaneo o Ingreso Manual (Sesión: {{ current_session.session_date.strftime('%Y-%m-%d') }})</h2>
 
     <div class="card mb-4 shadow-sm">
-      <div class="card-header bg-primary text-white">Resumen de la Sesión</div>
+      <div class="card-header bg-primary text-white">Resumen de la Sesión Actual</div>
       <div class="card-body">
         <p class="card-text"><strong>Paquetes Pendientes (Total):</strong> <span class="badge bg-info">{{ total_pending_packages }}</span></p>
         <p class="card-text"><strong>Paquetes No Registrados (Desconocidos):</strong> <span class="badge bg-warning text-dark">{{ not_registered_packages }}</span></p>
         <p class="card-text"><strong>Paquetes Faltantes por Escanear:</strong> <span class="badge bg-danger">{{ missing_to_scan_packages }}</span></p>
       </div>
     </div>
+
+    {% if g.last_session_summary %}
+    <div class="card mb-4 shadow-sm">
+      <div class="card-header bg-secondary text-white">Resumen de la Sesión Anterior ({{ g.last_session_summary.session_date }})</div>
+      <div class="card-body">
+        <p class="card-text"><strong>Total de Paquetes Escaneados:</strong> <span class="badge bg-primary">{{ g.last_session_summary.total_scanned_packages }}</span></p>
+        <p class="card-text"><strong>Paquetes Desconocidos Registrados:</strong> <span class="badge bg-warning text-dark">{{ g.last_session_summary.unknown_packages }}</span></p>
+        <p class="card-text"><strong>Paquetes Faltantes (No Escaneados):</strong> <span class="badge bg-danger">{{ g.last_session_summary.missing_packages }}</span></p>
+      </div>
+    </div>
+    {% endif %}
 
     <div class="card mb-4 shadow-sm">
       <div class="card-header bg-secondary text-white">Escaneo de Guías</div>
@@ -25,13 +36,26 @@
           />
         </div>
         <div class="mb-3 d-grid gap-2 d-md-flex justify-content-md-center">
-          <button class="btn btn-primary btn-lg flex-fill" onclick="startScannerLogic('reader')">Iniciar Escáner</button>
           <button class="btn btn-success btn-lg flex-fill" onclick="submitManual()">
             Registrar manualmente
           </button>
         </div>
         <div id="reader" class="scanner-container"></div>
         <div id="scan-message" class="mt-3 text-center"></div>
+        
+        <!-- Indicaciones de uso de la app -->
+        <div id="instructions-card" class="card mt-4 bg-light text-dark">
+          <div class="card-body">
+            <h5 class="card-title">Instrucciones de Uso</h5>
+            <p class="card-text">
+              1. Asegúrate de que la cámara esté habilitada y apuntando al código de barras.<br>
+              2. El sistema escaneará automáticamente los códigos de guía o tracking.<br>
+              3. Si un paquete es desconocido, aparecerá un mensaje para confirmarlo.<br>
+              4. Puedes ingresar códigos manualmente en el campo de texto superior.
+            </p>
+            <button class="btn btn-sm btn-outline-secondary float-end" onclick="document.getElementById('instructions-card').style.display='none';">Cerrar</button>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -67,6 +91,11 @@
 </script>
 <script src="/static/js/scanner.js"></script>
 <script>
+  // Iniciar el escáner automáticamente al cargar la página
+  document.addEventListener('DOMContentLoaded', () => {
+    startScannerLogic('reader');
+  });
+
   function submitManual() {
     const code = document.getElementById("codigo-input").value.trim();
     if (!code) {

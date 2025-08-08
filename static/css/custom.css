@@ -54,3 +54,17 @@
     margin-top: 15px;
     margin-bottom: 15px;
 }
+
+/* Estilos para los contadores flotantes en móvil */
+.mobile-counters {
+    width: 100%;
+    left: 0;
+    bottom: 0;
+    z-index: 1030; /* Asegura que esté por encima de otros elementos de Bootstrap */
+    box-shadow: 0 -2px 5px rgba(0,0,0,0.2); /* Sombra sutil en la parte superior */
+}
+
+.mobile-counters .badge {
+    font-size: 1em; /* Un poco más grande para visibilidad en móvil */
+    padding: 0.3em 0.5em;
+}
