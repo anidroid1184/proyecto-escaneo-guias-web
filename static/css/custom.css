@@ -1,0 +1,56 @@
+/* Estilos personalizados para la aplicación */
+
+/* Contenedor del escáner para asegurar un tamaño consistente */
+.scanner-container {
+    width: 100%;
+    max-width: 500px; /* Ajusta según sea necesario */
+    min-height: 300px; /* Asegura que el contenedor tenga una altura mínima */
+    margin: 0 auto;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    overflow: hidden; /* Para que el video no se desborde */
+}
+
+/* Ajustes para el video del escáner dentro del contenedor */
+.scanner-container video {
+    width: 100% !important;
+    height: auto !important;
+    display: block;
+}
+
+/* Mejorar la responsividad de los formularios y botones */
+@media (max-width: 767.98px) {
+    .btn-lg {
+        width: 100%;
+        margin-bottom: 10px;
+    }
+    .d-md-flex {
+        flex-direction: column;
+    }
+    .d-md-flex .flex-fill {
+        width: 100%;
+    }
+}
+
+/* Estilos para los badges en el resumen de la sesión */
+.card-text .badge {
+    font-size: 0.9em;
+    padding: 0.4em 0.6em;
+    vertical-align: middle;
+}
+
+/* Ajustes para la tabla en registros.html */
+.table-responsive {
+    overflow-x: auto;
+}
+
+.table th, .table td {
+    white-space: nowrap; /* Evita que el texto se rompa en varias líneas */
+    vertical-align: middle;
+}
+
+/* Pequeños ajustes para los mensajes de alerta */
+.alert {
+    margin-top: 15px;
+    margin-bottom: 15px;
+}

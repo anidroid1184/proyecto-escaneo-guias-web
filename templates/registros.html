@@ -1,54 +1,91 @@
 {% extends 'base.html' %}
 {% block content %}
-<h2 class="mb-3">Registros de Acceso</h2>
-<form class="row g-2 mb-3" method="get">
-  <div class="col-md-2">
-    <input type="text" name="nombre" class="form-control" placeholder="Nombre" value="{{ request.args.get('nombre', '') }}">
-  </div>
-  <div class="col-md-2">
-    <input type="text" name="documento" class="form-control" placeholder="Documento" value="{{ request.args.get('documento', '') }}">
-  </div>
-  <div class="col-md-2">
-    <select name="tipo" class="form-select">
-      <option value="">Tipo</option>
-      <option value="entrada" {% if request.args.get('tipo') == 'entrada' %}selected{% endif %}>Entrada</option>
-      <option value="salida" {% if request.args.get('tipo') == 'salida' %}selected{% endif %}>Salida</option>
+<h2 class="mb-3">Estado de Guías por Sesión</h2>
+<form class="row g-3 mb-3 align-items-end" method="get">
+  <div class="col-md-4 col-lg-3">
+    <label for="session_select" class="form-label">Sesión</label>
+    <select name="session_id" id="session_select" class="form-select" onchange="this.form.submit()">
+      {% if not current_session %}
+      <option value="">Seleccione una sesión</option>
+      {% endif %}
+      {% for s in sessions %}
+      <option value="{{ s.id }}" {% if s.id == selected_session_id %}selected{% endif %}>
+        {{ s.session_date.strftime('%Y-%m-%d') }} {% if s.is_closed %}(Cerrada){% else %}(Activa){% endif %}
+      </option>
+      {% endfor %}
     </select>
   </div>
-  <div class="col-md-2">
-    <input type="date" name="fecha_inicio" class="form-control" value="{{ request.args.get('fecha_inicio', '') }}">
+  <div class="col-md-4 col-lg-2">
+    <label for="tracking_input" class="form-label">Tracking</label>
+    <input type="text" name="tracking" id="tracking_input" class="form-control" placeholder="Tracking" value="{{ request.args.get('tracking', '') }}">
   </div>
-  <div class="col-md-2">
-    <input type="date" name="fecha_fin" class="form-control" value="{{ request.args.get('fecha_fin', '') }}">
+  <div class="col-md-4 col-lg-2">
+    <label for="guia_internacional_input" class="form-label">Guía Internacional</label>
+    <input type="text" name="guia_internacional" id="guia_internacional_input" class="form-control" placeholder="Guía Internacional" value="{{ request.args.get('guia_internacional', '') }}">
   </div>
-  <div class="col-md-2 d-flex gap-2">
-    <button type="submit" class="btn btn-primary">Filtrar</button>
-    <a href="/registros" class="btn btn-secondary">Limpiar</a>
-    <a href="/export?{{ request.query_string.decode('utf-8') }}" class="btn btn-success">Exportar a Excel</a>
+  <div class="col-md-4 col-lg-2">
+    <label for="status_select" class="form-label">Estado</label>
+    <select name="status" id="status_select" class="form-select">
+      <option value="">Todos</option>
+      <option value="RECIBIDO" {% if request.args.get('status') == 'RECIBIDO' %}selected{% endif %}>RECIBIDO</option>
+      <option value="NO RECIBIDO" {% if request.args.get('status') == 'NO RECIBIDO' %}selected{% endif %}>NO RECIBIDO</option>
+      <option value="NO ESPERADO" {% if request.args.get('status') == 'NO ESPERADO' %}selected{% endif %}>NO ESPERADO</option>
+      <option value="NO ESCANEADO" {% if request.args.get('status') == 'NO ESCANEADO' %}selected{% endif %}>NO ESCANEADO</option>
+    </select>
+  </div>
+  <div class="col-md-8 col-lg-3 d-flex gap-2">
+    <button type="submit" class="btn btn-primary flex-grow-1">Filtrar</button>
+    <a href="{{ url_for('records.registros', session_id=selected_session_id) }}" class="btn btn-secondary flex-grow-1">Limpiar</a>
+    <a href="{{ url_for('records.export', session_id=selected_session_id, tracking=request.args.get('tracking', ''), guia_internacional=request.args.get('guia_internacional', ''), status=request.args.get('status', '')) }}" class="btn btn-success flex-grow-1">Exportar a Excel</a>
   </div>
 </form>
-<table class="table table-striped table-bordered">
-  <thead>
-    <tr>
-      <th>Nombre</th>
-      <th>Documento</th>
-      <th>Código</th>
-      <th>Tipo</th>
-      <th>Fecha y Hora</th>
-    </tr>
-  </thead>
-  <tbody>
-    {% for r in registros %}
-    <tr>
-      <td>{{ r.persona.nombre }}</td>
-      <td>{{ r.persona.documento }}</td>
-      <td>{{ r.persona.codigo_barras }}</td>
-      <td>{{ r.tipo|capitalize }}</td>
-      <td>{{ r.timestamp.strftime('%Y-%m-%d %H:%M:%S') }}</td>
-    </tr>
-    {% else %}
-    <tr><td colspan="5" class="text-center">No hay registros.</td></tr>
-    {% endfor %}
-  </tbody>
-</table>
+
+{% if current_session %}
+<h3 class="mb-3">Detalles de la Sesión: {{ current_session.session_date.strftime('%Y-%m-%d') }} {% if current_session.is_closed %}(Cerrada){% else %}(Activa){% endif %}</h3>
+<div class="table-responsive">
+  <table class="table table-striped table-bordered">
+    <thead>
+      <tr>
+        <th>Tracking</th>
+        <th>Guía Internacional</th>
+        <th>Fecha Recibido (Guía)</th>
+        <th>Estado Sesión</th>
+        <th>Fecha y Hora Estado</th>
+        <th>Acciones</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for gs in guia_statuses %}
+      <tr>
+        <td>{{ gs.guia.tracking }}</td>
+        <td>{{ gs.guia.guia_internacional }}</td>
+        <td>{{ gs.guia.fecha_recibido.strftime('%Y-%m-%d %H:%M:%S') if gs.guia.fecha_recibido else 'N/A' }}</td>
+        <td>
+          {% if gs.status == 'NO ESPERADO' %}
+            <span class="badge bg-warning text-dark">NO ESPERADO</span><br>
+            <small>No estaba en la lista cargada</small>
+          {% elif gs.status == 'RECIBIDO' %}
+            <span class="badge bg-success">RECIBIDO</span>
+          {% elif gs.status == 'NO RECIBIDO' %}
+            <span class="badge bg-danger">NO RECIBIDO</span>
+          {% elif gs.status == 'NO ESCANEADO' %}
+            <span class="badge bg-secondary">NO ESCANEADO</span>
+          {% else %}
+            {{ gs.status }}
+          {% endif %}
+        </td>
+        <td>{{ gs.timestamp_status_change.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+        <td>
+          <a href="{{ url_for('records.edit_guia_status', guia_id=gs.guia.id, session_id=gs.session.id) }}" class="btn btn-sm btn-info">Editar</a>
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="6" class="text-center">No hay guías para esta sesión o con los filtros aplicados.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<div class="alert alert-info">Por favor, seleccione una sesión para ver los estados de las guías.</div>
+{% endif %}
 {% endblock %}
