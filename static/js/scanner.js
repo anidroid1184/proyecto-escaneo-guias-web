@@ -174,11 +174,13 @@ function showRegisterPrompt(tracking, guia_internacional, message, messageDivId 
 function showUnknownPackagePrompt(code, message, messageDivId = 'scan-message') {
     const msg = document.getElementById(messageDivId);
     if (msg) {
-        msg.innerHTML = `<div class="alert alert-warning">
-            ${message} <br>
-            ¿Deseas registrar este paquete desconocido (${code})?
-            <button class="btn btn-sm btn-primary ms-2" onclick="confirmUnknownPackage('${code}')">Sí, registrar</button>
-            <button class="btn btn-sm btn-secondary ms-2" onclick="cancelUnknownPackage()">No, cancelar</button>
+        msg.innerHTML = `<div class="alert alert-warning text-center">
+            <p>${message}</p>
+            <p>¿Deseas registrar este paquete desconocido (<strong>${code}</strong>)?</p>
+            <div class="d-flex flex-wrap justify-content-center gap-2">
+                <button class="btn btn-primary" onclick="confirmUnknownPackage('${code}')">Sí, registrar</button>
+                <button class="btn btn-secondary" onclick="cancelUnknownPackage()">No, cancelar</button>
+            </div>
         </div>`;
     }
     clearTimeout(scanMessageTimeout); // No limpiar automáticamente para que el usuario vea el mensaje
