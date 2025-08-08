@@ -122,7 +122,6 @@ function showSuccess(message, messageDivId = 'scan-message') {
     }, 5000); // Mensaje visible por 5 segundos
 }
 
-// Función para mostrar error (ahora recibe el mensaje y opcionalmente el ID del div)
 function showError(error, messageDivId = 'scan-message') {
     const msg = document.getElementById(messageDivId);
     if (msg) {
@@ -135,7 +134,6 @@ function showError(error, messageDivId = 'scan-message') {
     }, 5000); // Mensaje visible por 5 segundos
 }
 
-// Función para mostrar información/estado del escáner (ahora recibe el mensaje, tipo y opcionalmente el ID del div)
 function showScannerStatus(message, type = 'info', messageDivId = 'scan-message') {
     const msg = document.getElementById(messageDivId);
     if (msg) {
@@ -143,7 +141,6 @@ function showScannerStatus(message, type = 'info', messageDivId = 'scan-message'
     }
 }
 
-// Función para mostrar opción de registrar guía nueva (ahora recibe el mensaje completo y opcionalmente el ID del div)
 function showRegisterPrompt(tracking, guia_internacional, message, messageDivId = 'scan-message') {
     const msg = document.getElementById(messageDivId);
     if (msg) {

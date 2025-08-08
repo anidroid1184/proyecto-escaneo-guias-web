@@ -93,21 +93,25 @@ def export():
             'Guía Internacional': gs.guia.guia_internacional or 'N/A',
             'Fecha Recibido (Guía)': fecha_recibido_str,
             'Estado Sesión': gs.status,
-            'Fecha y Hora Estado':
-                gs.timestamp_status_change.strftime('%Y-%m-%d %H:%M:%S')
+            'Fecha y Hora Estado': gs.timestamp_status_change.strftime(
+                '%Y-%m-%d %H:%M:%S')
         })
 
     df = pd.DataFrame(data)
-    filename = (f'guias_sesion_{current_session.session_date.strftime("%Y%m%d")}'
-                '.xlsx')
+    filename = (
+        f'guias_sesion_{current_session.session_date.strftime("%Y%m%d")}'
+        '.xlsx'
+    )
     filepath = os.path.join(Config.EXPORT_FOLDER, filename)
     df.to_excel(filepath, index=False)
     return send_from_directory(Config.EXPORT_FOLDER, filename,
                                as_attachment=True)
 
 
-@records_bp.route('/edit_guia_status/<int:guia_id>/<int:session_id>',
-           methods=['GET', 'POST'])
+@records_bp.route(
+    '/edit_guia_status/<int:guia_id>/<int:session_id>',
+    methods=['GET', 'POST']
+)
 def edit_guia_status(guia_id, session_id):
     guia_status = GuiaSessionStatus.query.filter_by(
         guia_id=guia_id, session_id=session_id).first_or_404()
@@ -115,59 +119,81 @@ def edit_guia_status(guia_id, session_id):
     current_session = Session.query.get(session_id)
 
     if request.method == 'POST':
-        # Manejar actualización de código escaneado
-        data = request.get_json()
-        if data and data.get('action') == 'update_code':
+        try:
+            data = request.get_json()
+            if not data:
+                return jsonify({'error': 'Datos no proporcionados.'}), 400
+
+            new_status = data.get('new_status')
             scanned_code = data.get('scanned_code', '').strip()
-            scanned_code = sanitize_string(scanned_code)
+            scan_field_choice = data.get('scan_field_choice')
 
-            if not scanned_code:
-                return jsonify({'error': 'No se proporcionó ningún código para actualizar.'}), 400
+            updated_fields = {}
+            
+            # 1. Manejar actualización de estado
+            if new_status and new_status in [
+                'RECIBIDO', 'NO RECIBIDO', 'NO ESPERADO', 'NO ESCANEADO'
+            ]:
+                guia_status.status = new_status
+                guia_status.timestamp_status_change = datetime.utcnow()
+                updated_fields['new_status'] = new_status
+            elif new_status:  # Si se envió un estado pero no es válido
+                return jsonify({'error': 'Estado no válido.'}), 400
 
-            field_to_update = data.get('field')
-
-            if field_to_update == 'tracking':
-                guia.tracking = scanned_code
-            elif field_to_update == 'guia_internacional':
-                guia.guia_internacional = scanned_code
-            elif field_to_update == 'both':
-                # Si se elige 'both', la lógica de intuición se aplica
-                if scanned_code.startswith('TBA'):
+            # 2. Manejar actualización de código escaneado
+            if scanned_code:
+                scanned_code = sanitize_string(scanned_code)
+                
+                if scan_field_choice == 'tracking':
                     guia.tracking = scanned_code
-                elif scanned_code.startswith('BOG'):
+                    updated_fields['tracking'] = scanned_code
+                elif scan_field_choice == 'guia_internacional':
                     guia.guia_internacional = scanned_code
+                    updated_fields['guia_internacional'] = scanned_code
+                elif scan_field_choice == 'both':
+                    # Si se elige 'both', la lógica de intuición se aplica
+                    if scanned_code.startswith('TBA'):
+                        guia.tracking = scanned_code
+                        updated_fields['tracking'] = scanned_code
+                    elif scanned_code.startswith('BOG'):
+                        guia.guia_internacional = scanned_code
+                        updated_fields['guia_internacional'] = scanned_code
+                    else:
+                        # Si no se puede intuir, se actualiza el tracking por defecto
+                        guia.tracking = scanned_code
+                        updated_fields['tracking'] = scanned_code
                 else:
-                    # Si no se puede intuir, se actualiza el tracking por defecto
-                    guia.tracking = scanned_code
-            else:
-                # Si no se especifica el campo, aplicar la lógica de intuición
-                if scanned_code.startswith('TBA'):
-                    guia.tracking = scanned_code
-                elif scanned_code.startswith('BOG'):
-                    guia.guia_internacional = scanned_code
-                else:
-                    guia.tracking = scanned_code  # Por defecto, actualizar tracking
+                    # Si no se especifica el campo, aplicar la lógica de intuición
+                    if scanned_code.startswith('TBA'):
+                        guia.tracking = scanned_code
+                        updated_fields['tracking'] = scanned_code
+                    elif scanned_code.startswith('BOG'):
+                        guia.guia_internacional = scanned_code
+                        updated_fields['guia_internacional'] = scanned_code
+                    else:
+                        guia.tracking = scanned_code  # Por defecto, actualizar tracking
+                        updated_fields['tracking'] = scanned_code
+            
+            # Si no se realizó ninguna actualización, devolver un mensaje
+            if not updated_fields:
+                return jsonify({
+                    'error': 'No se proporcionaron datos válidos para actualizar.'
+                }), 400
 
             db.session.commit()
-            return jsonify({
+            
+            # Preparar la respuesta con los datos actualizados
+            response_data = {
                 'success': True,
-                'message': f'Guía actualizada con el código: {scanned_code}.',
+                'message': 'Cambios guardados exitosamente.',
+                'new_status': guia_status.status,
                 'tracking': guia.tracking,
                 'guia_internacional': guia.guia_internacional
-            })
-
-        # Manejar actualización de estado (lógica existente)
-        new_status = request.form.get('new_status')
-        if new_status in ['RECIBIDO', 'NO RECIBIDO', 'NO ESPERADO',
-                          'NO ESCANEADO']:
-            guia_status.status = new_status
-            guia_status.timestamp_status_change = datetime.utcnow()
-            db.session.commit()
-            flash(f'Estado de la guía {guia.tracking} actualizado a {new_status}.',
-                  'success')
-            return redirect(url_for('records.registros', session_id=session_id))
-        else:
-            flash('Estado no válido.', 'danger')
+            }
+            return jsonify(response_data)
+        except Exception as e:
+            db.session.rollback() # Revertir cualquier cambio en caso de error
+            return jsonify({'error': f'Error interno del servidor: {str(e)}'}), 500
 
     return render_template('edit_guia_status.html', guia_status=guia_status,
                            guia=guia, current_session=current_session)

@@ -7,13 +7,13 @@
       <div class="mb-3">
         {{ form.tracking.label(class="form-label") }}
         {{ form.tracking(class="form-control form-control-lg") }}
-        <button type="button" class="btn btn-info mt-2 w-100" onclick="startScanner('tracking')">Escanear Tracking</button>
+        <button type="button" class="btn btn-info mt-2 w-100" onclick="startScannerLogic('reader-tracking')">Escanear Tracking</button>
         <div id="reader-tracking" class="scanner-container mt-2"></div>
       </div>
       <div class="mb-3">
         {{ form.guia_internacional.label(class="form-label") }}
         {{ form.guia_internacional(class="form-control form-control-lg") }}
-        <button type="button" class="btn btn-info mt-2 w-100" onclick="startScanner('guia_internacional')">Escanear Guía Internacional</button>
+        <button type="button" class="btn btn-info mt-2 w-100" onclick="startScannerLogic('reader-guia-internacional')">Escanear Guía Internacional</button>
         <div id="reader-guia-internacional" class="scanner-container mt-2"></div>
       </div>
       <div class="mb-3 d-grid gap-2">
@@ -34,21 +34,19 @@
 <script>
   let currentScanField = '';
 
-  function startScanner(field) {
-    currentScanField = field;
-    // La lógica de scanner.js ya maneja el inicio del escáner con un ID de lector dinámico.
-    // Asegúrate de que el div 'reader-tracking' o 'reader-guia-internacional' exista.
-    startScannerLogic(`reader-${field}`);
-  }
-
   // Esta función es para el escaneo manual en el formulario de registro,
   // no para el proceso de dos pasos de /scan.
   function submitCode(code) {
-    if (currentScanField === 'tracking') {
-      document.getElementById('tracking').value = code;
-    } else if (currentScanField === 'guia_internacional') {
-      document.getElementById('guia_internacional').value = code;
+    // Determinar qué campo se está escaneando basándose en el ID del lector activo
+    const activeReaderId = html5QrCodeInstance ? html5QrCodeInstance.get
+    if (document.getElementById('reader-tracking').style.display === 'block') {
+        document.getElementById('tracking').value = code;
+        currentScanField = 'tracking';
+    } else if (document.getElementById('reader-guia-internacional').style.display === 'block') {
+        document.getElementById('guia_internacional').value = code;
+        currentScanField = 'guia_internacional';
     }
+
     // Detener el escáner después de un escaneo exitoso en el formulario de registro
     if (html5QrCodeInstance) {
       html5QrCodeInstance.stop().catch(() => {});
@@ -63,8 +61,5 @@
       msgDiv.innerHTML = `<div class="alert alert-success mt-2">Código <strong>${code}</strong> escaneado para <strong>${field}</strong>.</div>`;
     }
   }
-
-  // Asegurarse de que showError y showInfo de scanner.js estén disponibles globalmente
-  // No es necesario redefinirlas aquí si ya están en scanner.js
 </script>
 {% endblock %}

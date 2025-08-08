@@ -10,7 +10,7 @@
         <p><strong>Sesión:</strong> {{ current_session.session_date.strftime('%Y-%m-%d') }}</p>
         <p><strong>Estado Actual:</strong> {{ guia_status.status }}</p>
 
-        <form method="POST">
+        <form method="POST" id="edit-guia-form">
             <div class="mb-3">
                 <label for="new_status" class="form-label">Nuevo Estado</label>
                 <select name="new_status" id="new_status" class="form-select" required>
@@ -20,47 +20,50 @@
                     <option value="NO ESCANEADO" {% if guia_status.status == 'NO ESCANEADO' %}selected{% endif %}>NO ESCANEADO</option>
                 </select>
             </div>
-            <button type="submit" class="btn btn-primary">Actualizar Estado</button>
-            <a href="{{ url_for('records.registros', session_id=current_session.id) }}" class="btn btn-secondary ms-2">Cancelar</a>
+
+            <hr class="my-4">
+
+            <h3>Escanear o Ingresar Código para Actualizar Guía</h3>
+            <p>Si la guía tiene un código incorrecto o falta, escanéalo o ingrésalo aquí para actualizarla.</p>
+            
+            <div class="mb-3">
+                <label class="form-label">¿Qué campo deseas escanear/actualizar?</label>
+                <div class="form-check">
+                    <input class="form-check-input" type="radio" name="scan_field_choice" id="scan_tracking" value="tracking" checked>
+                    <label class="form-check-label" for="scan_tracking">
+                        Solo Tracking
+                    </label>
+                </div>
+                <div class="form-check">
+                    <input class="form-check-input" type="radio" name="scan_field_choice" id="scan_guia_internacional" value="guia_internacional">
+                    <label class="form-check-label" for="scan_guia_internacional">
+                        Solo Guía Internacional
+                    </label>
+                </div>
+                <div class="form-check">
+                    <input class="form-check-input" type="radio" name="scan_field_choice" id="scan_both" value="both">
+                    <label class="form-check-label" for="scan_both">
+                        Ambos (escanear dos veces)
+                    </label>
+                </div>
+            </div>
+
+            <div class="mb-3">
+                <label for="scanned_code_input" class="form-label">Código Escaneado (Tracking o Guía Internacional)</label>
+                <input type="text" id="scanned_code_input" name="scanned_code" class="form-control" placeholder="Escanea o ingresa el código manualmente">
+            </div>
+            <div class="mb-3 d-grid gap-2 d-md-flex justify-content-md-center">
+                <button type="button" class="btn btn-info btn-lg flex-fill" onclick="startScannerLogic('reader-edit_guia_scanner')">Iniciar Escáner</button>
+                <button type="button" class="btn btn-secondary btn-lg flex-fill" onclick="clearScannedCodeInput()">Limpiar Código</button>
+            </div>
+            <div id="reader-edit_guia_scanner" class="scanner-container mt-2"></div>
+            <div id="scan-message-edit" class="mt-3 text-center"></div>
+
+            <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-4">
+                <button type="submit" class="btn btn-primary btn-lg">Guardar Cambios</button>
+                <a href="{{ url_for('records.registros', session_id=current_session.id) }}" class="btn btn-secondary btn-lg">Cancelar</a>
+            </div>
         </form>
-
-        <hr class="my-4">
-
-        <h3>Escanear para Actualizar Guía</h3>
-        <p>Si la guía tiene un código incorrecto o falta, escanéalo aquí para actualizarla.</p>
-        
-        <div class="mb-3">
-            <label class="form-label">¿Qué campo deseas escanear/actualizar?</label>
-            <div class="form-check">
-                <input class="form-check-input" type="radio" name="scan_field_choice" id="scan_tracking" value="tracking" checked>
-                <label class="form-check-label" for="scan_tracking">
-                    Solo Tracking
-                </label>
-            </div>
-            <div class="form-check">
-                <input class="form-check-input" type="radio" name="scan_field_choice" id="scan_guia_internacional" value="guia_internacional">
-                <label class="form-check-label" for="scan_guia_internacional">
-                    Solo Guía Internacional
-                </label>
-            </div>
-            <div class="form-check">
-                <input class="form-check-input" type="radio" name="scan_field_choice" id="scan_both" value="both">
-                <label class="form-check-label" for="scan_both">
-                    Ambos (escanear dos veces)
-                </label>
-            </div>
-        </div>
-
-        <div class="mb-3">
-            <label for="scanned_code_input" class="form-label">Código Escaneado (Tracking o Guía Internacional)</label>
-            <input type="text" id="scanned_code_input" class="form-control" placeholder="Escanea o ingresa el código manualmente">
-        </div>
-        <div class="mb-3 d-grid gap-2 d-md-flex justify-content-md-center">
-            <button type="button" class="btn btn-info btn-lg flex-fill" onclick="startScanner('edit_guia_scanner')">Iniciar Escáner</button>
-            <button type="button" class="btn btn-success btn-lg flex-fill" onclick="submitManualEdit()">Actualizar Manualmente</button>
-        </div>
-        <div id="reader-edit_guia_scanner" class="scanner-container mt-2"></div>
-        <div id="scan-message-edit" class="mt-3 text-center"></div>
 
         {% else %}
         <div class="alert alert-danger">No se encontró la información de la guía o sesión.</div>
@@ -93,74 +96,75 @@
         showSuccess(message, 'scan-message-edit');
     }
 
-    // Las funciones startScanner y submitManualEdit ya están bien definidas en el HTML
-    // y llaman a las funciones globales de scanner.js.
-
     let currentScanStep = 0; // 0: no scanning, 1: tracking, 2: guia_internacional
     let scannedTrackingCode = '';
     let scannedGuiaInternacionalCode = '';
 
     function processScannedCode(code) { // Esta función es llamada por scanner.js
-        const choice = document.querySelector('input[name="scan_field_choice"]:checked').value;
-        
-        if (choice === 'tracking') {
-            sendUpdateCodeRequest(code, 'tracking');
-        } else if (choice === 'guia_internacional') {
-            sendUpdateCodeRequest(code, 'guia_internacional');
-        } else if (choice === 'both') {
-            if (currentScanStep === 0) {
-                scannedTrackingCode = code;
-                showScannerStatusEdit(`Tracking escaneado: ${code}. Ahora escanea la Guía Internacional.`);
-                currentScanStep = 1;
-                // Reiniciar escáner para el siguiente código
-                if (html5QrCodeInstance) {
-                    html5QrCodeInstance.stop().catch(() => {});
-                    html5QrCodeInstance = null;
-                }
-                startScannerLogic('reader-edit_guia_scanner'); // Reiniciar escáner
-            } else if (currentScanStep === 1) {
-                scannedGuiaInternacionalCode = code;
-                showScannerStatusEdit(`Guía Internacional escaneada: ${code}. Procesando ambos códigos...`);
-                sendUpdateCodeRequest(scannedTrackingCode, 'tracking');
-                sendUpdateCodeRequest(scannedGuiaInternacionalCode, 'guia_internacional');
-                currentScanStep = 0; // Reset
-                scannedTrackingCode = '';
-                scannedGuiaInternacionalCode = '';
-            }
-        }
+        document.getElementById("scanned_code_input").value = code; // Mostrar el código escaneado en el input
+        // No enviar automáticamente al backend, el usuario hará submit con el botón "Guardar Cambios"
+        showScannerStatusEdit(`Código escaneado: ${code}. Listo para guardar.`);
     }
 
-    function submitManualEdit() {
-        const code = document.getElementById("scanned_code_input").value.trim();
-        if (!code) {
-            showErrorEdit("Por favor ingresa un código.");
-            return;
-        }
-        processScannedCode(code); // Usar la misma lógica que el escaneo
+    function clearScannedCodeInput() {
+        document.getElementById("scanned_code_input").value = '';
+        showScannerStatusEdit("Código limpiado. Listo para escanear.");
     }
 
-    function sendUpdateCodeRequest(code, field_to_update) {
-        showScannerStatusEdit(`Código escaneado: ${code}. Actualizando guía...`);
+    // Manejar el envío del formulario unificado
+    document.getElementById('edit-guia-form').addEventListener('submit', function(event) {
+        event.preventDefault(); // Prevenir el envío normal del formulario
+
+        const newStatus = document.getElementById('new_status').value;
+        const scannedCode = document.getElementById('scanned_code_input').value.trim();
+        const scanFieldChoice = document.querySelector('input[name="scan_field_choice"]:checked').value;
+
+        const formData = {
+            new_status: newStatus,
+            scanned_code: scannedCode,
+            scan_field_choice: scanFieldChoice
+        };
+
+        showScannerStatusEdit("Guardando cambios...", 'info');
+
         fetch('/edit_guia_status/{{ guia.id }}/{{ current_session.id }}', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ scanned_code: code, action: 'update_code', field: field_to_update })
+            body: JSON.stringify(formData)
         })
-        .then(res => res.json())
+        .then(res => {
+            console.log('Respuesta de red:', res); // Log de la respuesta de red
+            if (!res.ok) { // Si la respuesta no es exitosa (ej. 4xx, 5xx)
+                return res.text().then(text => { throw new Error(text) });
+            }
+            return res.json();
+        })
         .then(data => {
             if (data.error) {
                 showErrorEdit(data.message || data.error);
             } else {
                 showSuccessEdit(data.message);
-                // Actualizar los valores mostrados en la página
-                document.getElementById('display-tracking').textContent = data.tracking || 'N/A';
-                document.getElementById('display-guia-internacional').textContent = data.guia_internacional || 'N/A';
+                // Actualizar los valores mostrados en la página si se actualizaron
+                if (data.tracking !== undefined) {
+                    document.getElementById('display-tracking').textContent = data.tracking || 'N/A';
+                }
+                if (data.guia_internacional !== undefined) {
+                    document.getElementById('display-guia-internacional').textContent = data.guia_internacional || 'N/A';
+                }
+                // Actualizar el estado actual mostrado
+                if (data.new_status !== undefined) {
+                    const statusElement = Array.from(document.querySelectorAll('p strong')).find(el => el.textContent.includes('Estado Actual:'));
+                    if (statusElement && statusElement.nextSibling) {
+                        statusElement.nextSibling.textContent = data.new_status;
+                    }
+                }
             }
         })
-        .catch(() => {
-            showErrorEdit('Error de comunicación con el servidor al actualizar la guía.');
+        .catch(error => {
+            console.error('Error en la solicitud fetch:', error); // Log del error completo
+            showErrorEdit('Error de comunicación con el servidor al guardar los cambios. Detalles: ' + error.message);
         });
-    }
+    });
 
     document.addEventListener('DOMContentLoaded', () => {
         showScannerStatusEdit("Listo para escanear.");
