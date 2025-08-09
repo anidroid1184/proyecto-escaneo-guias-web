@@ -1,6 +1,7 @@
-from flask import Blueprint, redirect, url_for, flash, request, session, g, render_template  # noqa: E501
+from flask import Blueprint, redirect, url_for, flash, request, session, g, render_template
 from datetime import datetime, date
 from models import db, Session, GuiaSessionStatus
+from sqlalchemy.orm import joinedload # Importar joinedload
 
 
 session_bp = Blueprint('session', __name__)
@@ -9,25 +10,27 @@ session_bp = Blueprint('session', __name__)
 @session_bp.before_app_request
 def load_current_session():
     today = date.today()
-    g.session = Session.query.filter_by(session_date=today).first()
+    # Cargar la sesión actual y eager-load la relación guia_statuses
+    g.session = Session.query.options(joinedload(Session.guia_statuses)).filter_by(session_date=today).first() # noqa: E501
 
     if not g.session:
         # Antes de crear una nueva sesión, obtener el resumen de la última sesión cerrada
         last_closed_session = Session.query.filter_by(is_closed=True) \
             .order_by(Session.session_date.desc()).first()
 
-        # Almacenar el resumen de la última sesión en g para que sea accesible en index.html  # noqa: E501
+        # Almacenar el resumen de la última sesión en g para que sea accesible en index.html
         g.last_session_summary = {
-            'session_date': last_closed_session.session_date.strftime('%Y-%m-%d') if last_closed_session else 'N/A',  # noqa: E501
-            'total_scanned_packages': last_closed_session.total_scanned_packages if last_closed_session else 0,  # noqa: E501
-            'unknown_packages': last_closed_session.unknown_packages if last_closed_session else 0,  # noqa: E501
-            'missing_packages': last_closed_session.missing_packages if last_closed_session else 0  # noqa: E501
+            'session_date': last_closed_session.session_date.strftime('%Y-%m-%d') if last_closed_session else 'N/A', # noqa: E501
+            'total_scanned_packages': last_closed_session.total_scanned_packages if last_closed_session else 0, # noqa: E501
+            'unknown_packages': last_closed_session.unknown_packages if last_closed_session else 0, # noqa: E501
+            'missing_packages': last_closed_session.missing_packages if last_closed_session else 0 # noqa: E501
         } if last_closed_session else None
 
         new_session = Session(session_date=today, is_closed=False)
         db.session.add(new_session)
         db.session.commit()
-        g.session = new_session
+        # Recargar la sesión recién creada con la relación cargada
+        g.session = Session.query.options(joinedload(Session.guia_statuses)).filter_by(id=new_session.id).first() # noqa: E501
 
 
 @session_bp.route('/end_session', methods=['GET', 'POST'])
@@ -48,7 +51,7 @@ def end_session():
                                    current_session=g.session)
 
         if confirmation_date != g.session.session_date:
-            flash('La fecha ingresada no coincide con la fecha de la sesión actual.',
+            flash('La fecha ingresada no coincide con la fecha de la sesión actual.', # noqa: E501
                   'danger')
             return render_template('end_session.html',
                                    current_session=g.session)
@@ -77,7 +80,7 @@ def end_session():
         db.session.commit()
 
         session.pop('session_id', None)
-        flash((f'Sesión del {g.session.session_date} finalizada exitosamente. '  # noqa: E501
+        flash((f'Sesión del {g.session.session_date} finalizada exitosamente. ' # noqa: E501
                'Guías no recibidas marcadas como "NO ESCANEADO".'), 'success')
 
         # Pasar el resumen a la plantilla end_session.html

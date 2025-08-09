@@ -89,3 +89,19 @@
 <div class="alert alert-info">Por favor, seleccione una sesión para ver los estados de las guías.</div>
 {% endif %}
 {% endblock %}
+
+{% block scripts %}
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    const totalPending = document.getElementById('mobile-total-pending');
+    const notRegistered = document.getElementById('mobile-not-registered');
+    const missingToScan = document.getElementById('mobile-missing-to-scan');
+
+    if (totalPending && notRegistered && missingToScan) {
+      totalPending.textContent = {{ footer_counts.total_pending_packages | default(0) }};
+      notRegistered.textContent = {{ footer_counts.not_registered_packages | default(0) }};
+      missingToScan.textContent = {{ footer_counts.missing_to_scan_packages | default(0) }};
+    }
+  });
+</script>
+{% endblock %}

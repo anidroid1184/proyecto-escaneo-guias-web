@@ -2,20 +2,35 @@
 <div class="row justify-content-center">
   <div class="col-md-6">
     <h2 class="mb-3">Cargar Guías desde Excel/CSV</h2>
-    <form action="/upload" method="post" enctype="multipart/form-data">
+    <form action="{{ url_for('main.upload') }}" method="post" enctype="multipart/form-data">
       <div class="mb-3">
         <label for="file" class="form-label">Archivo (.xlsx o .csv)</label>
         <input
           type="file"
-          name="file"
-          id="file"
+          name="excel_file" {# Cambiado de 'file' a 'excel_file' para coincidir con el backend #}
+          id="excel_file" {# Cambiado de 'file' a 'excel_file' #}
           class="form-control"
           accept=".xlsx,.csv"
           required
         />
       </div>
-      <button type="submit" class="btn btn-primary">Cargar</button>
+      <button type="submit" class="btn btn-primary btn-lg w-100 mb-3"> {# Añadido w-100 y mb-3 para responsividad #}
+        {% if current_session and current_session.guia_statuses|length > 0 %}
+          Reemplazar Guías
+        {% else %}
+          Cargar Guías
+        {% endif %}
+      </button>
     </form>
+
+    {% if current_session and current_session.guia_statuses|length > 0 %}
+    <div class="mt-3 d-grid gap-2"> {# Añadido d-grid gap-2 para responsividad #}
+      <form action="{{ url_for('main.delete_current_excel') }}" method="post" onsubmit="return confirm('¿Estás seguro de que quieres eliminar todas las guías de la sesión actual? Esta acción no se puede deshacer?');">
+        <button type="submit" class="btn btn-danger btn-lg w-100">Eliminar Guías de la Sesión Actual</button> {# Añadido w-100 #}
+      </form>
+    </div>
+    {% endif %}
+
     <div class="alert alert-info mt-3">
       El archivo debe tener columnas: <b>TRACKING</b>, <b>GUIA INTERNACIONAL</b>.
     </div>

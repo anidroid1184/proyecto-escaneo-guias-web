@@ -38,4 +38,8 @@ os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 os.makedirs(app.config['EXPORT_FOLDER'], exist_ok=True)
 
 if __name__ == '__main__':
+    # Configuración para producción (comentada para desarrollo local)
     app.run(debug=False, host='0.0.0.0', port=8000)
+
+    # Configuración para desarrollo local
+    # app.run(debug=True, host='127.0.0.1', port=5000)

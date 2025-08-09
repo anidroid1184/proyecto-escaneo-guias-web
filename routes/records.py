@@ -10,6 +10,24 @@ from config import Config
 from utils import sanitize_string
 
 
+# Función auxiliar para obtener los conteos actualizados (similar a la de scan.py)
+def get_updated_counts_for_session(session_id):
+    # Total de guías en la sesión que no han sido marcadas como RECIBIDO
+    total_pending = GuiaSessionStatus.query.filter(
+        GuiaSessionStatus.session_id == session_id,
+        GuiaSessionStatus.status != 'RECIBIDO'
+    ).count()
+    not_registered = GuiaSessionStatus.query.filter_by(
+        session_id=session_id, status='NO ESPERADO').count()
+    missing_to_scan = GuiaSessionStatus.query.filter_by(
+        session_id=session_id, status='NO RECIBIDO').count()
+    return {
+        'total_pending_packages': total_pending,
+        'not_registered_packages': not_registered,
+        'missing_to_scan_packages': missing_to_scan
+    }
+
+
 records_bp = Blueprint('records', __name__)
 
 
@@ -27,6 +45,10 @@ def registros():
         current_session = sessions[0]
 
     guia_statuses = []
+    footer_counts = {'total_pending_packages': 0,
+                     'not_registered_packages': 0,
+                     'missing_to_scan_packages': 0}
+
     if current_session:
         query = GuiaSessionStatus.query.filter_by(
             session_id=current_session.id).join(Guia)
@@ -46,12 +68,16 @@ def registros():
         guia_statuses = query.order_by(
             GuiaSessionStatus.timestamp_status_change.desc()).all()
 
+        # Obtener los conteos para el footer de la sesión actual
+        footer_counts = get_updated_counts_for_session(current_session.id)
+
     return render_template('registros.html',
                            guia_statuses=guia_statuses,
                            sessions=sessions,
                            current_session=current_session,
                            selected_session_id=(current_session.id
-                                                if current_session else None))
+                                                if current_session else None),
+                           footer_counts=footer_counts)
 
 
 @records_bp.route('/export', methods=['GET'])
@@ -86,7 +112,7 @@ def export():
 
     data = []
     for gs in guia_statuses:
-        fecha_recibido_str = (gs.guia.fecha_recibido.strftime('%Y-%m-%d %H:%M:%S')
+        fecha_recibido_str = (gs.guia.fecha_recibido.strftime('%Y-%m-%d %H:%M:%S')  # noqa: E501
                               if gs.guia.fecha_recibido else 'N/A')
         data.append({
             'Tracking': gs.guia.tracking or 'N/A',
@@ -125,32 +151,51 @@ def edit_guia_status(guia_id, session_id):
                 return jsonify({'error': 'Datos no proporcionados.'}), 400
 
             new_status = data.get('new_status')
-            updated_fields = {}
+            updated_tracking = data.get('tracking')
+            updated_guia_internacional = data.get('guia_internacional')
+
+            changes_made = False
 
             # Manejar actualización de estado
             if new_status and new_status in [
                 'RECIBIDO', 'NO RECIBIDO', 'NO ESPERADO', 'NO ESCANEADO'
-            ]:
+            ] and guia_status.status != new_status:
                 guia_status.status = new_status
                 guia_status.timestamp_status_change = datetime.utcnow()
-                updated_fields['new_status'] = new_status
-            elif new_status:  # Si se envió un estado pero no es válido
+                changes_made = True
+            elif new_status and new_status not in [
+                'RECIBIDO', 'NO RECIBIDO', 'NO ESPERADO', 'NO ESCANEADO'
+            ]:
                 return jsonify({'error': 'Estado no válido.'}), 400
 
-            if not updated_fields:
+            # Manejar actualización de tracking
+            if updated_tracking is not None and guia.tracking != updated_tracking:
+                guia.tracking = updated_tracking
+                changes_made = True
+
+            # Manejar actualización de guia_internacional
+            if updated_guia_internacional is not None and guia.guia_internacional != updated_guia_internacional:
+                guia.guia_internacional = updated_guia_internacional
+                changes_made = True
+
+            if not changes_made:
                 return jsonify({
-                    'error': ('No se proporcionaron datos válidos para '
-                              'actualizar el estado.')
-                }), 400
+                    'success': True,
+                    'message': 'No se detectaron cambios para guardar.',
+                    'new_status': guia_status.status,
+                    'tracking': guia.tracking,
+                    'guia_internacional': guia.guia_internacional
+                })
 
             db.session.commit()
 
             response_data = {
                 'success': True,
-                'message': 'Estado de guía actualizado exitosamente.',
+                'message': 'Guía actualizada exitosamente.',
                 'new_status': guia_status.status,
-                'tracking': guia.tracking,  # Incluir para consistencia
-                'guia_internacional': guia.guia_internacional  # Incluir para consistencia
+                'tracking': guia.tracking,
+                'guia_internacional': guia.guia_internacional,
+                'redirect_to_records': True  # Señal para el frontend
             }
             return jsonify(response_data)
         except Exception as e:
@@ -168,13 +213,16 @@ def update_guia_fields():
         if not data:
             return jsonify({'error': 'Datos no proporcionados.'}), 400
 
-        guia_id = data.get('guia_id', type=int)
+        guia_id_raw = data.get('guia_id')
+        try:
+            guia_id = int(guia_id_raw)
+        except (TypeError, ValueError):
+            guia_id = None
         scanned_code = data.get('scanned_code', '').strip()
         field_type = data.get('field_type')
 
         if not guia_id or not scanned_code or not field_type:
-            return jsonify({'error': ('Datos incompletos para la '
-                                      'actualización.')}), 400
+            return jsonify({'error': ('Datos incompletos para la actualización.')}), 400
 
         guia = Guia.query.get(guia_id)
         if not guia:
@@ -208,7 +256,7 @@ def update_guia_fields():
             if guia.guia_internacional != scanned_code:
                 guia.guia_internacional = scanned_code
                 updated_guia_internacional = True
-            
+
             if updated_tracking and updated_guia_internacional:
                 message = ("Tracking y Guía Internacional actualizados "
                            "exitosamente.")

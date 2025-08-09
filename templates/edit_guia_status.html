@@ -199,13 +199,24 @@
         event.preventDefault(); // Prevenir el envío normal del formulario
 
         const newStatus = document.getElementById('new_status').value;
-        // No enviar scanned_code ni scan_field_choice aquí, se manejan con el popup
-        
+        const currentTracking = document.getElementById('display-tracking').textContent;
+        const currentGuiaInternacional = document.getElementById('display-guia-internacional').textContent;
+        const scannedInput = document.getElementById('scanned_code_input').value.trim();
+
+        // Si hay código en el input, mostrar el popup de confirmación igual que con el escaneo
+        if (scannedInput) {
+            showUpdateConfirmationPrompt(scannedInput, currentTracking, currentGuiaInternacional);
+            return; // No continuar con el submit normal
+        }
+
+        // Si no hay código, solo guardar el estado normalmente
         const formData = {
-            new_status: newStatus
+            new_status: newStatus,
+            tracking: currentTracking === 'N/A' ? null : currentTracking, // Enviar null si es N/A
+            guia_internacional: currentGuiaInternacional === 'N/A' ? null : currentGuiaInternacional // Enviar null si es N/A
         };
 
-        showScannerStatusEdit("Guardando cambios de estado...", 'info');
+        showScannerStatusEdit("Guardando cambios...", 'info');
 
         fetch('/edit_guia_status/{{ guia.id }}/{{ current_session.id }}', {
             method: 'POST',
@@ -213,7 +224,6 @@
             body: JSON.stringify(formData)
         })
         .then(res => {
-            console.log('Respuesta de red:', res);
             if (!res.ok) {
                 return res.text().then(text => { throw new Error(text) });
             }
@@ -231,11 +241,15 @@
                         statusElement.nextSibling.textContent = data.new_status;
                     }
                 }
+                // Redirigir si el backend lo indica
+                if (data.redirect_to_records) {
+                    window.location.href = "{{ url_for('records.registros', session_id=current_session.id) }}";
+                }
             }
         })
         .catch(error => {
-            console.error('Error en la solicitud fetch para guardar estado:', error);
-            showErrorEdit('Error de comunicación con el servidor al guardar el estado. Detalles: ' + error.message);
+            console.error('Error en la solicitud fetch para guardar cambios:', error);
+            showErrorEdit('Error de comunicación con el servidor al guardar los cambios. Detalles: ' + error.message);
         });
     });
 

@@ -68,3 +68,15 @@
     font-size: 1em; /* Un poco más grande para visibilidad en móvil */
     padding: 0.3em 0.5em;
 }
+
+/* Asegurar que el contenido no quede oculto detrás del footer fijo en móvil */
+body {
+    padding-bottom: 70px; /* Ajusta según la altura de tu footer */
+}
+
+/* Ajuste para el botón de cargar Excel en móviles */
+@media (max-width: 767.98px) {
+    .upload-form .btn {
+        margin-bottom: 20px; /* Espacio adicional debajo del botón de carga */
+    }
+}

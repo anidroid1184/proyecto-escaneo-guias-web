@@ -18,13 +18,23 @@
       <div class="card-header bg-secondary text-white">Escaneo de Guías</div>
       <div class="card-body">
         <div class="mb-3">
-          <label for="codigo-input" class="form-label">Tracking</label>
+          <label for="codigo-input" class="form-label">Código</label>
           <input
             type="text"
             id="codigo-input"
             class="form-control form-control-lg"
-            placeholder="Escanea o ingresa el tracking manualmente"
+            placeholder="Escanea o ingresa el código manualmente"
           />
+        </div>
+        <div class="mb-3">
+          <div class="form-check form-check-inline">
+            <input class="form-check-input" type="radio" name="code_type" id="typeTracking" value="tracking" checked>
+            <label class="form-check-label" for="typeTracking">Tracking</label>
+          </div>
+          <div class="form-check form-check-inline">
+            <input class="form-check-input" type="radio" name="code_type" id="typeGuiaInternacional" value="guia_internacional">
+            <label class="form-check-label" for="typeGuiaInternacional">Guía Internacional</label>
+          </div>
         </div>
         <div class="mb-3 d-grid gap-2 d-md-flex justify-content-md-center">
           <button class="btn btn-success btn-lg flex-fill" onclick="submitManual()">
@@ -51,17 +61,10 @@
     </div>
 
     <div class="card mb-4 shadow-sm">
-      <div class="card-header bg-info text-white">Cargar Guías desde Excel</div>
-      <div class="card-body">
-        <form method="POST" enctype="multipart/form-data">
-          <div class="mb-3">
-            <label for="excel_file" class="form-label">Archivo Excel de Guías Esperadas (.xlsx o .csv)</label>
-            <input type="file" name="excel_file" id="excel_file" class="form-control" accept=".xlsx,.csv" required>
-          </div>
-          <div class="mb-3 d-grid">
-            <button type="submit" class="btn btn-info btn-lg">Cargar Guías</button>
-          </div>
-        </form>
+      <div class="card-header bg-info text-white">Gestión de Guías</div>
+      <div class="card-body text-center">
+        <p class="card-text">Administra las guías de la sesión actual.</p>
+        <a href="{{ url_for('main.upload') }}" class="btn btn-info btn-lg w-100 mb-3">Cargar/Gestionar Guías Excel</a>
       </div>
     </div>
 
@@ -70,7 +73,9 @@
     </div>
   </div>
 </div>
-{% endblock %} {% block scripts %}
+{% endblock %}
+
+{% block scripts %}
 <!-- Usar la versión local de html5-qrcode -->
 <script src="/static/js/html5-qrcode.min.js"></script>
 <script>
@@ -85,15 +90,28 @@
   // Iniciar el escáner automáticamente al cargar la página
   document.addEventListener('DOMContentLoaded', () => {
     startScannerLogic('reader');
+
+    // Actualizar los contadores del footer al cargar la página
+    const totalPending = document.getElementById('mobile-total-pending');
+    const notRegistered = document.getElementById('mobile-not-registered');
+    const missingToScan = document.getElementById('mobile-missing-to-scan');
+
+    if (totalPending && notRegistered && missingToScan) {
+      totalPending.textContent = {{ footer_counts.total_pending_packages | default(0) }};
+      notRegistered.textContent = {{ footer_counts.not_registered_packages | default(0) }};
+      missingToScan.textContent = {{ footer_counts.missing_to_scan_packages | default(0) }};
+    }
   });
 
   function submitManual() {
     const code = document.getElementById("codigo-input").value.trim();
+    const selectedCodeType = document.querySelector('input[name="code_type"]:checked').value;
+
     if (!code) {
       showError("Por favor ingresa un código.");
       return;
     }
-    submitCode(code);
+    submitCode(code, selectedCodeType); // Pasar el tipo de código
   }
 </script>
 {% endblock %}

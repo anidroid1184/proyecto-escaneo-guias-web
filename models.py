@@ -6,8 +6,8 @@ db = SQLAlchemy()
 
 class Guia(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    tracking = db.Column(db.String(120), unique=False, nullable=True)  # noqa: E501
-    guia_internacional = db.Column(db.String(50), unique=False, nullable=True)  # noqa: E501
+    tracking = db.Column(db.String(120), unique=False, nullable=True) # noqa: E501
+    guia_internacional = db.Column(db.String(50), unique=False, nullable=True) # noqa: E501
     fecha_recibido = db.Column(db.DateTime, default=datetime.utcnow)
 
     # Añadir una restricción para asegurar que al menos uno de los dos campos
@@ -32,7 +32,7 @@ class GuiaSessionStatus(db.Model):
     session_id = db.Column(db.Integer, db.ForeignKey('session.id'),
                            nullable=False)
     guia_id = db.Column(db.Integer, db.ForeignKey('guia.id'), nullable=False)
-    status = db.Column(db.String(20), nullable=False)  # noqa: E501
+    status = db.Column(db.String(20), nullable=False) # noqa: E501
     # 'RECIBIDO', 'NO RECIBIDO', 'NO ESPERADO', 'NO ESCANEADO'
     timestamp_status_change = db.Column(db.DateTime, default=datetime.utcnow,
                                         nullable=False)

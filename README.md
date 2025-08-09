@@ -1,12 +1,12 @@
-# Control de Accesos por Código de Barras
+# Proyecto: Escaneo y Control de Guías Web
 
-Sistema web ligero para registrar ingresos y salidas de personas mediante escaneo de códigos de barras o ingreso manual. Accesible desde móvil y escritorio.
+Sistema web para registrar, editar y controlar guías mediante escaneo o ingreso manual de códigos. Accesible desde móvil y escritorio.
 
-## Características
+## Características principales
 
-- Registro de entradas y salidas por escaneo o ingreso manual
-- Alta manual y masiva de personas (Excel/CSV)
-- Persistencia en SQLite (SQLAlchemy)
+- Registro y edición de guías por escaneo o ingreso manual
+- Alta masiva desde Excel
+- Persistencia en SQLite (fácil de migrar a MySQL)
 - Exportación de registros a Excel
 - Interfaz responsive (Bootstrap 5)
 - Escaneo con cámara usando html5-qrcode
@@ -14,54 +14,78 @@ Sistema web ligero para registrar ingresos y salidas de personas mediante escane
 ## Estructura del Proyecto
 
 ```
-/project_root
-│
 ├── app.py
-├── models.py
+├── config.py
+├── errors.py
 ├── forms.py
+├── init_db.py
+├── models.py
 ├── requirements.txt
-│
-├── /templates
-│   ├── base.html
-│   ├── upload.html
-│   ├── index.html
-│   ├── register.html
-│   └── registros.html
-│
+├── run_app.py
+├── utils.py
+├── wsgi.py
+├── LICENSE
+├── README.md
+├── /routes
 ├── /static
-│   ├── /css/custom.css
-│   └── /js/scanner.js
-│
+├── /templates
 ├── /uploads
 ├── /exports
-├── app.db
-└── README.md
+├── /instance
 ```
 
-## Instalación
+## Despliegue en PythonAnywhere (Guía para el Cliente)
 
-1. **Clona el repositorio y entra al directorio:**
+1. **Sube el proyecto a tu cuenta de PythonAnywhere**
+2. **Crea un entorno virtual:**
    ```bash
-   git clone <url-del-repo>
-   cd proyecto-escaneo-guias-web
-   ```
-2. **Crea un entorno virtual (opcional pero recomendado):**
-   ```bash
-   python -m venv venv
-   source venv/bin/activate  # En Windows: venv\Scripts\activate
-   ```
-3. **Instala las dependencias:**
-   ```bash
+   python3.10 -m venv venv
+   source venv/bin/activate
+   pip install --upgrade pip
    pip install -r requirements.txt
    ```
-4. **Crea las carpetas necesarias:**
+3. **Crea las carpetas necesarias:**
    ```bash
-   mkdir uploads exports
+   mkdir -p uploads exports instance
    ```
-5. **Inicializa la base de datos:**
+4. **Inicializa la base de datos:**
    ```bash
-   python app.py  # Se creará app.db automáticamente al iniciar
+   python init_db.py
    ```
+5. **Configura el archivo WSGI:**
+   - En el panel de PythonAnywhere, ve a Web > WSGI configuration file.
+   - Asegúrate que el contenido sea similar a:
+     ```python
+     import sys
+     import os
+     project_home = '/home/<tu_usuario>/proyecto-escaneo-guias-web'
+     if project_home not in sys.path:
+         sys.path = [project_home] + sys.path
+     from app import app as application
+     ```
+6. **Configura la ruta de archivos estáticos y media en PythonAnywhere:**
+   - Añade rutas para `/static/`, `/uploads/` y `/exports/`.
+7. **Reinicia la web app desde el panel de PythonAnywhere.**
+
+## Notas para producción
+
+- Por defecto usa SQLite. Si necesitas MySQL, cambia la URI en `config.py`.
+- El archivo `LICENSE` permite uso comercial solo al cliente final.
+
+## Créditos y Licencia
+
+- Autor: Juan Valencia (anidroid1184)
+- Cliente: Uso exclusivo para el cliente final según acuerdo comercial.
+- Licencia: Comercial, ver archivo LICENSE.
+
+---
+
+© 2025 Juan Valencia. Todos los derechos reservados. 5. **Inicializa la base de datos:**
+
+```bash
+python app.py  # Se creará app.db automáticamente al iniciar
+```
+
 6. **Ejecuta la aplicación:**
    ```bash
    flask run

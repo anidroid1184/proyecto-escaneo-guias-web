@@ -10,20 +10,27 @@ scan_bp = Blueprint('scan', __name__)
 @scan_bp.route('/scan', methods=['POST'])
 def scan():
     if not g.session:
-        return jsonify({'error': 'No hay una sesión activa. '  # noqa: E501
+        return jsonify({'error': 'No hay una sesión activa. '
                                  'Por favor, inicie una sesión primero.'}), 400
 
     data = request.get_json()
     scanned_code = data.get('code', '').strip()
+    code_type = data.get('code_type') # 'tracking' o 'guia_internacional'
     scanned_code = sanitize_string(scanned_code)
 
     if not scanned_code:
         return jsonify({'error': 'No se proporcionó ningún código para escanear.'}), 400
 
-    guia = Guia.query.filter(
-        (Guia.tracking == scanned_code) |
-        (Guia.guia_internacional == scanned_code)
-    ).first()
+    guia = None
+    if code_type == 'tracking':
+        guia = Guia.query.filter_by(tracking=scanned_code).first()
+    elif code_type == 'guia_internacional':
+        guia = Guia.query.filter_by(guia_internacional=scanned_code).first()
+    else: # Si no se especifica el tipo, buscar en ambos (comportamiento por defecto del escáner)
+        guia = Guia.query.filter(
+            (Guia.tracking == scanned_code) |
+            (Guia.guia_internacional == scanned_code)
+        ).first()
 
     guia_session_status = None
     if guia:
@@ -34,8 +41,11 @@ def scan():
 
     # Función auxiliar para obtener los conteos actualizados
     def get_updated_counts():
-        total_pending = GuiaSessionStatus.query.filter_by(
-            session_id=g.session.id).count()
+        # Total de guías en la sesión que no han sido marcadas como RECIBIDO
+        total_pending = GuiaSessionStatus.query.filter(
+            GuiaSessionStatus.session_id == g.session.id,
+            GuiaSessionStatus.status != 'RECIBIDO'
+        ).count()
         not_registered = GuiaSessionStatus.query.filter_by(
             session_id=g.session.id, status='NO ESPERADO').count()
         missing_to_scan = GuiaSessionStatus.query.filter_by(
@@ -143,10 +153,10 @@ def register_unknown():
 
     if not guia:
         guia = Guia(tracking=scanned_code,
-                    guia_internacional=None,  # Asumimos que es tracking si es desconocido  # noqa: E501
+                    guia_internacional=None,  # Asumimos que es tracking si es desconocido
                     fecha_recibido=datetime.utcnow())
         db.session.add(guia)
-        db.session.flush()  # Para obtener el ID de la guía antes de commitear  # noqa: E501
+        db.session.flush()  # Para obtener el ID de la guía antes de commitear
 
     guia_session_status = GuiaSessionStatus.query.filter_by(
         session_id=g.session.id, guia_id=guia.id).first()
@@ -171,8 +181,11 @@ def register_unknown():
 
     # Función auxiliar para obtener los conteos actualizados
     def get_updated_counts():
-        total_pending = GuiaSessionStatus.query.filter_by(
-            session_id=g.session.id).count()
+        # Total de guías en la sesión que no han sido marcadas como RECIBIDO
+        total_pending = GuiaSessionStatus.query.filter(
+            GuiaSessionStatus.session_id == g.session.id,
+            GuiaSessionStatus.status != 'RECIBIDO'
+        ).count()
         not_registered = GuiaSessionStatus.query.filter_by(
             session_id=g.session.id, status='NO ESPERADO').count()
         missing_to_scan = GuiaSessionStatus.query.filter_by(
@@ -184,7 +197,7 @@ def register_unknown():
         }
 
     response_data = {
-        'message': (f'Paquete desconocido "{scanned_code}" '  # noqa: E501
+        'message': (f'Paquete desconocido "{scanned_code}" '
                     'registrado como NO ESPERADO.'),
         'tracking': guia.tracking,
         'guia_internacional': guia.guia_internacional

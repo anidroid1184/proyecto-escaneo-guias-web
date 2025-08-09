@@ -11,17 +11,29 @@ function startScannerLogic(readerDivId) {
         return;
     }
 
+    // Detener cualquier instancia previa del escáner antes de iniciar una nueva
+    // Solo intentar detener si la instancia existe y el readerDiv aún tiene hijos (indicando que el escáner está activo)
+    if (html5QrCodeInstance && readerDiv.hasChildNodes()) {
+        html5QrCodeInstance.stop().catch(err => {
+            // Manejar el error NotFoundError silenciosamente si el elemento ya fue removido
+            if (err.name === 'NotFoundError') {
+                console.warn("scanner.js: Advertencia: El elemento del escáner ya no estaba en el DOM al intentar detenerlo.");
+            } else {
+                console.error("Error al detener escáner previo:", err);
+            }
+        });
+        html5QrCodeInstance = null;
+    } else if (html5QrCodeInstance) {
+        // Si la instancia existe pero no hay hijos, simplemente la nulificamos
+        html5QrCodeInstance = null;
+        console.log("scanner.js: Instancia de escáner nulificada porque el elemento DOM no tiene hijos.");
+    }
+
     // Limpiar el área de escaneo y asegurar que sea visible
     readerDiv.innerHTML = '';
     readerDiv.style.width = '100%'; // Asegurar que ocupe el ancho disponible
     readerDiv.style.minHeight = '300px'; // Asegurar una altura mínima para la cámara
     readerDiv.style.display = 'block'; // Asegurar que el div no esté oculto
-
-    // Detener cualquier instancia previa del escáner antes de iniciar una nueva
-    if (html5QrCodeInstance) {
-        html5QrCodeInstance.stop().catch(err => console.error("Error al detener escáner previo:", err));
-        html5QrCodeInstance = null;
-    }
 
     html5QrCodeInstance = new Html5Qrcode(readerDivId);
     // Configuración para escaneo continuo y mayor precisión
@@ -85,7 +97,18 @@ function submitCode(code) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ code: code }) // Enviar un solo código
     })
-    .then(res => res.json())
+    .then(res => {
+        if (!res.ok) {
+            // Si la respuesta no es OK (ej. 404, 500), intentar leer el mensaje de error del backend
+            return res.json().then(errData => {
+                throw new Error(errData.message || 'Error desconocido del servidor.');
+            }).catch(() => {
+                // Si no se puede parsear el JSON de error, es un error de comunicación genérico
+                throw new Error('Error de comunicación con el servidor.');
+            });
+        }
+        return res.json(); // Si la respuesta es OK, parsear el JSON normalmente
+    })
     .then(data => {
         if (data.error) {
             showError(data.message || data.error); // Mostrar el mensaje de error del backend
@@ -93,23 +116,26 @@ function submitCode(code) {
                 showUnknownPackagePrompt(code, data.message); // Mostrar popup de confirmación
             }
         } else {
-            showSuccess(data.message); // Mostrar el mensaje de éxito del backend
-            // Actualizar los conteos en tiempo real
+            // Actualizar los conteos en tiempo real ANTES de mostrar el mensaje de éxito
             if (data.total_pending_packages !== undefined) {
-                document.querySelector('.card-body p:nth-child(1) .badge').textContent = data.total_pending_packages;
+                const totalPendingBadge = document.querySelector('.card-body p:nth-child(1) .badge');
+                if (totalPendingBadge) totalPendingBadge.textContent = data.total_pending_packages;
                 const mobileTotalPending = document.getElementById('mobile-total-pending');
                 if (mobileTotalPending) mobileTotalPending.textContent = data.total_pending_packages;
             }
             if (data.not_registered_packages !== undefined) {
-                document.querySelector('.card-body p:nth-child(2) .badge').textContent = data.not_registered_packages;
+                const notRegisteredBadge = document.querySelector('.card-body p:nth-child(2) .badge');
+                if (notRegisteredBadge) notRegisteredBadge.textContent = data.not_registered_packages;
                 const mobileNotRegistered = document.getElementById('mobile-not-registered');
                 if (mobileNotRegistered) mobileNotRegistered.textContent = data.not_registered_packages;
             }
             if (data.missing_to_scan_packages !== undefined) {
-                document.querySelector('.card-body p:nth-child(3) .badge').textContent = data.missing_to_scan_packages;
+                const missingToScanBadge = document.querySelector('.card-body p:nth-child(3) .badge');
+                if (missingToScanBadge) missingToScanBadge.textContent = data.missing_to_scan_packages;
                 const mobileMissingToScan = document.getElementById('mobile-missing-to-scan');
                 if (mobileMissingToScan) mobileMissingToScan.textContent = data.missing_to_scan_packages;
             }
+            showSuccess(data.message); // Mostrar el mensaje de éxito del backend
             // Pausar el escáner brevemente después de un escaneo exitoso
             if (html5QrCodeInstance) {
                 html5QrCodeInstance.pause();
@@ -119,8 +145,9 @@ function submitCode(code) {
             }
         }
     })
-    .catch(() => {
-        showError('Error de comunicación con el servidor.');
+    .catch(error => {
+        // Capturar errores lanzados por el bloque .then() o errores de red
+        showError(error.message || 'Error de comunicación con el servidor.');
     });
 }
 
@@ -134,19 +161,19 @@ function showSuccess(message, messageDivId = 'scan-message') {
     scanMessageTimeout = setTimeout(() => {
         msg.innerHTML = ''; // Limpiar el mensaje después de un tiempo
         showScannerStatus("Listo para escanear.", 'info', messageDivId); // Restablecer el estado del escáner
-    }, 5000); // Mensaje visible por 5 segundos
+    }, 500); // Mensaje visible por 0.5 segundos
 }
 
 function showError(error, messageDivId = 'scan-message') {
+    console.error("Error mostrado (UI suprimida):", error); // Registrar el error en la consola
     const msg = document.getElementById(messageDivId);
     if (msg) {
-        msg.innerHTML = `<div class="alert alert-danger">${error}</div>`;
+        msg.innerHTML = ''; // Limpiar cualquier mensaje previo en el DOM
     }
     clearTimeout(scanMessageTimeout);
-    scanMessageTimeout = setTimeout(() => {
-        msg.innerHTML = ''; // Limpiar el mensaje después de un tiempo
-        showScannerStatus("Listo para escanear.", 'info', messageDivId); // Restablecer el estado del escáner
-    }, 5000); // Mensaje visible por 5 segundos
+    // No se establece un timeout para limpiar, ya que no se muestra nada.
+    // Si se desea un mensaje temporal, se puede ajustar aquí.
+    // Por ahora, simplemente no se muestra el error en la UI.
 }
 
 function showScannerStatus(message, type = 'info', messageDivId = 'scan-message') {
@@ -200,17 +227,20 @@ function confirmUnknownPackage(code) {
             showSuccess(data.message);
             // Actualizar los conteos en tiempo real
             if (data.total_pending_packages !== undefined) {
-                document.querySelector('.card-body p:nth-child(1) .badge').textContent = data.total_pending_packages;
+                const totalPendingBadge = document.querySelector('.card-body p:nth-child(1) .badge');
+                if (totalPendingBadge) totalPendingBadge.textContent = data.total_pending_packages;
                 const mobileTotalPending = document.getElementById('mobile-total-pending');
                 if (mobileTotalPending) mobileTotalPending.textContent = data.total_pending_packages;
             }
             if (data.not_registered_packages !== undefined) {
-                document.querySelector('.card-body p:nth-child(2) .badge').textContent = data.not_registered_packages;
+                const notRegisteredBadge = document.querySelector('.card-body p:nth-child(2) .badge');
+                if (notRegisteredBadge) notRegisteredBadge.textContent = data.not_registered_packages;
                 const mobileNotRegistered = document.getElementById('mobile-not-registered');
                 if (mobileNotRegistered) mobileNotRegistered.textContent = data.not_registered_packages;
             }
             if (data.missing_to_scan_packages !== undefined) {
-                document.querySelector('.card-body p:nth-child(3) .badge').textContent = data.missing_to_scan_packages;
+                const missingToScanBadge = document.querySelector('.card-body p:nth-child(3) .badge');
+                if (missingToScanBadge) missingToScanBadge.textContent = data.missing_to_scan_packages;
                 const mobileMissingToScan = document.getElementById('mobile-missing-to-scan');
                 if (mobileMissingToScan) mobileMissingToScan.textContent = data.missing_to_scan_packages;
             }
