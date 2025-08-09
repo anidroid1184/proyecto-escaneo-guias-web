@@ -7,7 +7,12 @@ from routes.scan import scan_bp
 from routes.register import register_bp
 from routes.records import records_bp
 from routes.session import session_bp
-import errors  # Importar el módulo de errores para registrar los manejadores
+from dotenv import load_dotenv
+from errors import (
+    register_error_handlers
+)  # Importar la función de registro de errores
+
+load_dotenv()  # Cargar variables de entorno desde .env
 
 
 app = Flask(__name__)
@@ -24,6 +29,9 @@ app.register_blueprint(scan_bp)
 app.register_blueprint(register_bp)
 app.register_blueprint(records_bp)
 app.register_blueprint(session_bp)
+
+# Registrar manejadores de errores
+register_error_handlers(app)
 
 # Crear carpetas necesarias si no existen
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
