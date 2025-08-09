@@ -3,15 +3,6 @@
   <div class="col-12 col-md-10 col-lg-8">
     <h2 class="mb-3 text-center">Escaneo o Ingreso Manual (Sesión: {{ current_session.session_date.strftime('%Y-%m-%d') }})</h2>
 
-    <div class="card mb-4 shadow-sm">
-      <div class="card-header bg-primary text-white">Resumen de la Sesión Actual</div>
-      <div class="card-body">
-        <p class="card-text"><strong>Paquetes Pendientes (Total):</strong> <span class="badge bg-info">{{ total_pending_packages }}</span></p>
-        <p class="card-text"><strong>Paquetes No Registrados (Desconocidos):</strong> <span class="badge bg-warning text-dark">{{ not_registered_packages }}</span></p>
-        <p class="card-text"><strong>Paquetes Faltantes por Escanear:</strong> <span class="badge bg-danger">{{ missing_to_scan_packages }}</span></p>
-      </div>
-    </div>
-
     {% if g.last_session_summary %}
     <div class="card mb-4 shadow-sm">
       <div class="card-header bg-secondary text-white">Resumen de la Sesión Anterior ({{ g.last_session_summary.session_date }})</div>

@@ -93,26 +93,8 @@ def index():
               'success')
         return redirect(url_for('main.index'))
 
-    total_pending_packages = GuiaSessionStatus.query.filter(
-        GuiaSessionStatus.session_id == current_session.id,
-        GuiaSessionStatus.status.in_(['NO RECIBIDO', 'NO ESCANEADO'])
-    ).count()
-
-    not_registered_packages = GuiaSessionStatus.query.filter(
-        GuiaSessionStatus.session_id == current_session.id,
-        GuiaSessionStatus.status == 'NO ESPERADO'
-    ).count()
-
-    missing_to_scan_packages = GuiaSessionStatus.query.filter(
-        GuiaSessionStatus.session_id == current_session.id,
-        GuiaSessionStatus.status == 'NO RECIBIDO'
-    ).count()
-
     return render_template('index.html',
-                           current_session=current_session,
-                           total_pending_packages=total_pending_packages,
-                           not_registered_packages=not_registered_packages,
-                           missing_to_scan_packages=missing_to_scan_packages)
+                           current_session=current_session)
 
 
 @main_bp.route('/upload', methods=['GET', 'POST'])

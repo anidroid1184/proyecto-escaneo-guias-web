@@ -46,10 +46,9 @@ def scan():
             'missing_to_scan_packages': missing_to_scan
         }
 
-    if not guia or not guia_session_status:
-        # No registrar la guía ni el status inmediatamente,
-        # solo indicar que es desconocido
-        message = (f'El código "{scanned_code}" no corresponde a una guía '  # noqa: E501
+    # Si la guía no existe en la base de datos, es un paquete completamente desconocido
+    if not guia:
+        message = (f'El código "{scanned_code}" no corresponde a una guía '
                    'conocida o esperada en esta sesión.')
         return jsonify({
             'error': 'unknown_package_detected',
@@ -57,7 +56,48 @@ def scan():
             'message': message
         })
 
-    if guia_session_status.status == 'NO RECIBIDO':
+    # Si la guía existe, verificar su estado en la sesión actual
+    guia_session_status = GuiaSessionStatus.query.filter_by(
+        session_id=g.session.id, guia_id=guia.id).first()
+
+    # Si la guía existe en la base de datos pero no está asociada a la sesión actual.
+    if not guia_session_status:
+        # Creamos un GuiaSessionStatus para ella con estado 'NO ESPERADO'
+        # y le damos la opción al usuario de registrarla.
+        guia_session_status = GuiaSessionStatus(
+            session_id=g.session.id,
+            guia_id=guia.id,
+            status='NO ESPERADO',
+            timestamp_status_change=datetime.utcnow()
+        )
+        db.session.add(guia_session_status)
+        db.session.commit()
+
+        message = (f'La guía "{scanned_code}" fue encontrada en la base de datos '
+                   'pero no estaba asociada a la sesión actual. Se ha registrado '
+                   'como "NO ESPERADO" en esta sesión.')
+        return jsonify({
+            'error': 'unknown_package_detected',
+            'code': scanned_code,
+            'message': message
+        })
+
+    # Si la guía existe y está asociada a la sesión
+    if guia_session_status.status == 'RECIBIDO':
+        response_data = {
+            'tracking': guia.tracking,
+            'guia_internacional': guia.guia_internacional,
+            'fecha_recibido': (guia.fecha_recibido.strftime('%Y-%m-%d %H:%M:%S')
+                               if guia.fecha_recibido else ''),
+            'tipo': 'entrada',
+            'timestamp': datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S'),
+            'status': 'YA RECIBIDO',
+            'message': (f'La guía {guia.guia_internacional or guia.tracking} ya '
+                        'fue marcada como RECIBIDO en esta sesión.')
+        }
+        response_data.update(get_updated_counts())
+        return jsonify(response_data)
+    else:  # Si el estado actual NO es RECIBIDO (es decir, NO RECIBIDO, NO ESPERADO, NO ESCANEADO, etc.)
         guia_session_status.status = 'RECIBIDO'
         guia_session_status.timestamp_status_change = datetime.utcnow()
         db.session.commit()
@@ -70,42 +110,13 @@ def scan():
         response_data = {
             'tracking': guia.tracking,
             'guia_internacional': guia.guia_internacional,
-            'fecha_recibido': (guia.fecha_recibido.strftime('%Y-%m-%d %H:%M:%S')  # noqa: E501
+            'fecha_recibido': (guia.fecha_recibido.strftime('%Y-%m-%d %H:%M:%S')
                                if guia.fecha_recibido else ''),
             'tipo': 'entrada',
             'timestamp': registro.timestamp.strftime('%Y-%m-%d %H:%M:%S'),
             'status': 'RECIBIDO',
-            'message': (f'Guía {guia.guia_internacional or guia.tracking} '  # noqa: E501
+            'message': (f'Guía {guia.guia_internacional or guia.tracking} '
                         'registrada exitosamente.')
-        }
-        response_data.update(get_updated_counts())
-        return jsonify(response_data)
-
-    elif guia_session_status.status == 'RECIBIDO':
-        response_data = {
-            'tracking': guia.tracking,
-            'guia_internacional': guia.guia_internacional,
-            'fecha_recibido': (guia.fecha_recibido.strftime('%Y-%m-%d %H:%M:%S')  # noqa: E501
-                               if guia.fecha_recibido else ''),
-            'tipo': 'entrada',
-            'timestamp': datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S'),
-            'status': 'YA RECIBIDO',
-            'message': (f'La guía {guia.guia_internacional or guia.tracking} ya '  # noqa: E501
-                        'fue marcada como RECIBIDO en esta sesión.')
-        }
-        response_data.update(get_updated_counts())
-        return jsonify(response_data)
-    else:
-        response_data = {
-            'tracking': guia.tracking,
-            'guia_internacional': guia.guia_internacional,
-            'fecha_recibido': (guia.fecha_recibido.strftime('%Y-%m-%d %H:%M:%S')  # noqa: E501
-                               if guia.fecha_recibido else ''),
-            'tipo': 'entrada',
-            'timestamp': datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S'),
-            'status': guia_session_status.status,
-            'message': (f'Estado actual de la guía {guia.guia_internacional or guia.tracking}: '  # noqa: E501
-                        f'{guia_session_status.status}.')
         }
         response_data.update(get_updated_counts())
         return jsonify(response_data)
