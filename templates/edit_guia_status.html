@@ -7,7 +7,7 @@
         {% if guia_status and guia and current_session %}
         <p><strong>Tracking:</strong> <span id="display-tracking">{{ guia.tracking }}</span></p>
         <p><strong>Guía Internacional:</strong> <span id="display-guia-internacional">{{ guia.guia_internacional }}</span></p>
-        <p><strong>Sesión:</strong> {{ current_session.session_date.strftime('%Y-%m-%d') }}</p>
+    <p><strong>Sesión:</strong> {% if current_session %}{{ current_session.session_date.strftime('%Y-%m-%d') }}{% else %}Sin sesión activa{% endif %}</p>
         <p><strong>Estado Actual:</strong> {{ guia_status.status }}</p>
 
         <form method="POST" id="edit-guia-form">

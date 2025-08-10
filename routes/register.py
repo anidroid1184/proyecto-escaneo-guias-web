@@ -10,10 +10,7 @@ register_bp = Blueprint('register', __name__)
 
 @register_bp.route('/register', methods=['GET', 'POST'])
 def register():
-    if not g.session:
-        flash('No hay una sesión activa. Por favor, inicie una sesión primero.',
-              'warning')
-        return redirect(url_for('main.index'))
+    # Se elimina la restricción de sesión activa para permitir registrar guías en cualquier momento
 
     form = GuiaForm()
     if request.method == 'GET':

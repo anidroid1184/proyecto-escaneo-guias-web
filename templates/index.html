@@ -1,15 +1,37 @@
 {% extends 'base.html' %} {% block content %}
 <div class="row justify-content-center">
   <div class="col-12 col-md-10 col-lg-8">
-    <h2 class="mb-3 text-center">Escaneo o Ingreso Manual (Sesión: {{ current_session.session_date.strftime('%Y-%m-%d') }})</h2>
+    <h2 class="mb-3 text-center">
+      Escaneo o Ingreso Manual {% if current_session %} (Sesión: {{
+      current_session.session_date.strftime('%Y-%m-%d') }}) {% else %} (Sin
+      sesión activa) {% endif %}
+    </h2>
 
     {% if g.last_session_summary %}
     <div class="card mb-4 shadow-sm">
-      <div class="card-header bg-secondary text-white">Resumen de la Sesión Anterior ({{ g.last_session_summary.session_date }})</div>
+      <div class="card-header bg-secondary text-white">
+        Resumen de la Sesión Anterior ({{ g.last_session_summary.session_date
+        }})
+      </div>
       <div class="card-body">
-        <p class="card-text"><strong>Total de Paquetes Escaneados:</strong> <span class="badge bg-primary">{{ g.last_session_summary.total_scanned_packages }}</span></p>
-        <p class="card-text"><strong>Paquetes Desconocidos Registrados:</strong> <span class="badge bg-warning text-dark">{{ g.last_session_summary.unknown_packages }}</span></p>
-        <p class="card-text"><strong>Paquetes Faltantes (No Escaneados):</strong> <span class="badge bg-danger">{{ g.last_session_summary.missing_packages }}</span></p>
+        <p class="card-text">
+          <strong>Total de Paquetes Escaneados:</strong>
+          <span class="badge bg-primary"
+            >{{ g.last_session_summary.total_scanned_packages }}</span
+          >
+        </p>
+        <p class="card-text">
+          <strong>Paquetes Desconocidos Registrados:</strong>
+          <span class="badge bg-warning text-dark"
+            >{{ g.last_session_summary.unknown_packages }}</span
+          >
+        </p>
+        <p class="card-text">
+          <strong>Paquetes Faltantes (No Escaneados):</strong>
+          <span class="badge bg-danger"
+            >{{ g.last_session_summary.missing_packages }}</span
+          >
+        </p>
       </div>
     </div>
     {% endif %}
@@ -28,33 +50,60 @@
         </div>
         <div class="mb-3">
           <div class="form-check form-check-inline">
-            <input class="form-check-input" type="radio" name="code_type" id="typeTracking" value="tracking" checked>
+            <input
+              class="form-check-input"
+              type="radio"
+              name="code_type"
+              id="typeTracking"
+              value="tracking"
+              checked
+            />
             <label class="form-check-label" for="typeTracking">Tracking</label>
           </div>
           <div class="form-check form-check-inline">
-            <input class="form-check-input" type="radio" name="code_type" id="typeGuiaInternacional" value="guia_internacional">
-            <label class="form-check-label" for="typeGuiaInternacional">Guía Internacional</label>
+            <input
+              class="form-check-input"
+              type="radio"
+              name="code_type"
+              id="typeGuiaInternacional"
+              value="guia_internacional"
+            />
+            <label class="form-check-label" for="typeGuiaInternacional"
+              >Guía Internacional</label
+            >
           </div>
         </div>
         <div class="mb-3 d-grid gap-2 d-md-flex justify-content-md-center">
-          <button class="btn btn-success btn-lg flex-fill" onclick="submitManual()">
+          <button
+            class="btn btn-success btn-lg flex-fill"
+            onclick="submitManual()"
+          >
             Registrar manualmente
           </button>
         </div>
         <div id="reader" class="scanner-container"></div>
         <div id="scan-message" class="mt-3 text-center"></div>
-        
+
         <!-- Indicaciones de uso de la app -->
         <div id="instructions-card" class="card mt-4 bg-light text-dark">
           <div class="card-body">
             <h5 class="card-title">Instrucciones de Uso</h5>
             <p class="card-text">
-              1. Asegúrate de que la cámara esté habilitada y apuntando al código de barras.<br>
-              2. El sistema escaneará automáticamente los códigos de guía o tracking.<br>
-              3. Si un paquete es desconocido, aparecerá un mensaje para confirmarlo.<br>
-              4. Puedes ingresar códigos manualmente en el campo de texto superior.
+              1. Asegúrate de que la cámara esté habilitada y apuntando al
+              código de barras.<br />
+              2. El sistema escaneará automáticamente los códigos de guía o
+              tracking.<br />
+              3. Si un paquete es desconocido, aparecerá un mensaje para
+              confirmarlo.<br />
+              4. Puedes ingresar códigos manualmente en el campo de texto
+              superior.
             </p>
-            <button class="btn btn-sm btn-outline-secondary float-end" onclick="document.getElementById('instructions-card').style.display='none';">Cerrar</button>
+            <button
+              class="btn btn-sm btn-outline-secondary float-end"
+              onclick="document.getElementById('instructions-card').style.display='none';"
+            >
+              Cerrar
+            </button>
           </div>
         </div>
       </div>
@@ -64,18 +113,24 @@
       <div class="card-header bg-info text-white">Gestión de Guías</div>
       <div class="card-body text-center">
         <p class="card-text">Administra las guías de la sesión actual.</p>
-        <a href="{{ url_for('main.upload') }}" class="btn btn-info btn-lg w-100 mb-3">Cargar/Gestionar Guías Excel</a>
+        <a
+          href="{{ url_for('main.upload') }}"
+          class="btn btn-info btn-lg w-100 mb-3"
+          >Cargar/Gestionar Guías Excel</a
+        >
       </div>
     </div>
 
     <div class="mt-4 text-center">
-        <a href="{{ url_for('session.end_session') }}" class="btn btn-warning btn-lg">Finalizar Sesión</a>
+      <a
+        href="{{ url_for('session.end_session') }}"
+        class="btn btn-warning btn-lg"
+        >Finalizar Sesión</a
+      >
     </div>
   </div>
 </div>
-{% endblock %}
-
-{% block scripts %}
+{% endblock %} {% block scripts %}
 <!-- Usar la versión local de html5-qrcode -->
 <script src="/static/js/html5-qrcode.min.js"></script>
 <script>

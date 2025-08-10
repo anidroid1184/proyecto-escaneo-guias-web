@@ -5,7 +5,7 @@
   <div class="col-md-4 col-lg-3">
     <label for="session_select" class="form-label">Sesión</label>
     <select name="session_id" id="session_select" class="form-select" onchange="this.form.submit()">
-      {% if not current_session %}
+  {% if not current_session %}
       <option value="">Seleccione una sesión</option>
       {% endif %}
       {% for s in sessions %}
@@ -41,7 +41,11 @@
 </form>
 
 {% if current_session %}
+{% if current_session %}
 <h3 class="mb-3">Detalles de la Sesión: {{ current_session.session_date.strftime('%Y-%m-%d') }} {% if current_session.is_closed %}(Cerrada){% else %}(Activa){% endif %}</h3>
+{% else %}
+<h3 class="mb-3">No hay sesión activa seleccionada.</h3>
+{% endif %}
 <div class="table-responsive">
   <table class="table table-striped table-bordered">
     <thead>
