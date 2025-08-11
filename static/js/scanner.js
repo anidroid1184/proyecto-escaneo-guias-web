@@ -1,8 +1,28 @@
+// Envío manual con tipo explícito (tracking o guia_internacional)
+function submitManualWithType(tipo) {
+    const code = document.getElementById("codigo-input").value.trim();
+    if (!code) {
+        showError("Por favor ingresa un código.");
+        return;
+    }
+    let url = "/register?";
+    if (tipo === 'tracking') {
+        url += `tracking=${encodeURIComponent(code)}`;
+    } else if (tipo === 'guia_internacional') {
+        url += `guia_internacional=${encodeURIComponent(code)}`;
+    } else {
+        showError("Tipo de registro no válido.");
+        return;
+    }
+    window.location.href = url;
+}
 // Lógica para escanear códigos de barras usando html5-qrcode
 // Requiere incluir html5-qrcode.min.js en el HTML
 
 let html5QrCodeInstance = null;
 let scanMessageTimeout;
+let lastSuccessCode = '';
+let successMessageVisible = false;
 
 function startScannerLogic(readerDivId) {
     const readerDiv = document.getElementById(readerDivId);
@@ -74,9 +94,11 @@ function showErrorWithRetry(message, readerDivId, messageDivId = 'scan-message')
 }
 
 function processScannedCode(code) {
-    // Esta función es sobrescrita en edit_guia_status.html,
-    // pero aquí está la implementación por defecto para index.html
-    showScannerStatus(`Código escaneado: ${code}. Procesando...`);
+    // Solo mostrar el mensaje de procesando si no hay un popup de confirmación activo
+    const scanMsg = document.getElementById('scan-message');
+    if (!scanMsg || !scanMsg.innerHTML.includes('¿Deseas registrar este paquete desconocido')) {
+        showScannerStatus(`Código escaneado: ${code}. Procesando...`);
+    }
     submitCode(code); // Enviar el código directamente
 }
 
@@ -92,6 +114,10 @@ function submitManual() {
 }
 
 function submitCode(code) {
+    // Si el código es igual al último exitoso y el mensaje está visible, no vuelvas a mostrar el mensaje
+    if (code === lastSuccessCode && successMessageVisible) {
+        return;
+    }
     fetch('/scan', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -135,10 +161,12 @@ function submitCode(code) {
                 const mobileMissingToScan = document.getElementById('mobile-missing-to-scan');
                 if (mobileMissingToScan) mobileMissingToScan.textContent = data.missing_to_scan_packages;
             }
-            showSuccess(data.message); // Mostrar el mensaje de éxito del backend
+            // Mostrar mensaje de éxito solo si es un nuevo código
+            lastSuccessCode = code;
+            successMessageVisible = true;
+            showSuccess(data.message);
             // Pausar el escáner brevemente después de un escaneo exitoso
             if (html5QrCodeInstance) {
-                html5QrCodeInstance.pause();
                 setTimeout(() => {
                     html5QrCodeInstance.resume();
                 }, 1000); // Pausa de 1 segundo
@@ -158,17 +186,20 @@ function showSuccess(message, messageDivId = 'scan-message') {
         msg.innerHTML = `<div class="alert alert-success">${message}</div>`;
     }
     clearTimeout(scanMessageTimeout);
-    scanMessageTimeout = setTimeout(() => {
-        msg.innerHTML = ''; // Limpiar el mensaje después de un tiempo
-        showScannerStatus("Listo para escanear.", 'info', messageDivId); // Restablecer el estado del escáner
-    }, 500); // Mensaje visible por 0.5 segundos
+    // El mensaje de éxito se mantiene hasta que se detecte un nuevo código
+    // No se borra automáticamente aquí
+    // Se puede limpiar manualmente si se desea en otro flujo
 }
 
 function showError(error, messageDivId = 'scan-message') {
     console.error("Error mostrado (UI suprimida):", error); // Registrar el error en la consola
+    // Si el error es de paquete desconocido, no limpiar el mensaje (el popup se encarga)
+    if (typeof error === 'string' && error.includes('no corresponde a una guía conocida')) {
+        return;
+    }
     const msg = document.getElementById(messageDivId);
     if (msg) {
-        msg.innerHTML = ''; // Limpiar cualquier mensaje previo en el DOM
+        msg.innerHTML = '';
     }
     clearTimeout(scanMessageTimeout);
     // No se establece un timeout para limpiar, ya que no se muestra nada.
@@ -184,34 +215,121 @@ function showScannerStatus(message, type = 'info', messageDivId = 'scan-message'
 }
 
 function showRegisterPrompt(tracking, guia_internacional, message, messageDivId = 'scan-message') {
-    const msg = document.getElementById(messageDivId);
-    if (msg) {
-        msg.innerHTML = `<div class="alert alert-warning">
-            ${message} 
-            <a href="/register?tracking=${encodeURIComponent(tracking || '')}&guia_internacional=${encodeURIComponent(guia_internacional || '')}" class="btn btn-sm btn-primary ms-2">Registrar como guía nueva</a>
-        </div>`;
+    // Redirigir automáticamente a la vista de registro de guía nueva manual
+    let url = '/register?';
+    if (tracking) {
+        url += `tracking=${encodeURIComponent(tracking)}`;
+    } else if (guia_internacional) {
+        url += `guia_internacional=${encodeURIComponent(guia_internacional)}`;
     }
-    clearTimeout(scanMessageTimeout);
-    scanMessageTimeout = setTimeout(() => {
-        msg.innerHTML = ''; // Limpiar el mensaje después de un tiempo
-        showScannerStatus("Listo para escanear.", 'info', messageDivId); // Restablecer el estado del escáner
-    }, 10000); // Mensaje visible por 10 segundos para dar tiempo a registrar
+    window.location.href = url;
 }
 
 function showUnknownPackagePrompt(code, message, messageDivId = 'scan-message') {
     const msg = document.getElementById(messageDivId);
     if (msg) {
-        msg.innerHTML = `<div class="alert alert-warning text-center">
-            <p>${message}</p>
-            <p>¿Deseas registrar este paquete desconocido (<strong>${code}</strong>)?</p>
-            <div class="d-flex flex-wrap justify-content-center gap-2">
-                <button class="btn btn-primary" onclick="confirmUnknownPackage('${code}')">Sí, registrar</button>
-                <button class="btn btn-secondary" onclick="cancelUnknownPackage()">No, cancelar</button>
+        msg.innerHTML = `
+            <div class="alert alert-warning text-center">
+                <p>${message}</p>
+                <p>¿Deseas registrar este paquete desconocido (<strong>${code}</strong>)?</p>
+                <div id="unknown-actions" class="d-flex flex-wrap justify-content-center gap-2 mt-3">
+                    <button class="btn btn-success" onclick="confirmUnknownPackage('${code}')">Registrar como Guía</button>
+                    <button class="btn btn-info" onclick="confirmUnknownTracking('${code}')">Registrar como Tracking</button>
+                    <button class="btn btn-secondary" onclick="cancelUnknownPackage()">Cancelar</button>
+                </div>
             </div>
-        </div>`;
+        `;
     }
-    clearTimeout(scanMessageTimeout); // No limpiar automáticamente para que el usuario vea el mensaje
+        // No limpiar el mensaje automáticamente
 }
+
+function confirmUnknownPackage(code) {
+    fetch('/register_unknown', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code: code, code_type: 'guia_internacional' })
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.error) {
+            showError(data.message || data.error);
+        } else {
+            showSuccess(data.message);
+            // Actualizar los conteos en tiempo real
+            if (data.total_pending_packages !== undefined) {
+                const totalPendingBadge = document.querySelector('.card-body p:nth-child(1) .badge');
+                if (totalPendingBadge) totalPendingBadge.textContent = data.total_pending_packages;
+                const mobileTotalPending = document.getElementById('mobile-total-pending');
+                if (mobileTotalPending) mobileTotalPending.textContent = data.total_pending_packages;
+            }
+            if (data.not_registered_packages !== undefined) {
+                const notRegisteredBadge = document.querySelector('.card-body p:nth-child(2) .badge');
+                if (notRegisteredBadge) notRegisteredBadge.textContent = data.not_registered_packages;
+                const mobileNotRegistered = document.getElementById('mobile-not-registered');
+                if (mobileNotRegistered) mobileNotRegistered.textContent = data.not_registered_packages;
+            }
+            if (data.missing_to_scan_packages !== undefined) {
+                const missingToScanBadge = document.querySelector('.card-body p:nth-child(3) .badge');
+                if (missingToScanBadge) missingToScanBadge.textContent = data.missing_to_scan_packages;
+                const mobileMissingToScan = document.getElementById('mobile-missing-to-scan');
+                if (mobileMissingToScan) mobileMissingToScan.textContent = data.missing_to_scan_packages;
+            }
+        }
+    })
+    .catch(() => {
+        showError('Error de comunicación con el servidor al registrar paquete desconocido.');
+    })
+    .finally(() => {
+        // Reanudar el escáner después de la confirmación o cancelación
+        startScannerLogic('reader');
+    });
+}
+
+// Registrar como Tracking
+function confirmUnknownTracking(code) {
+    fetch('/register_unknown', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code: code, code_type: 'tracking' })
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.error) {
+            showError(data.message || data.error);
+        } else {
+            showSuccess(data.message);
+            // Actualizar los conteos en tiempo real
+            if (data.total_pending_packages !== undefined) {
+                const totalPendingBadge = document.querySelector('.card-body p:nth-child(1) .badge');
+                if (totalPendingBadge) totalPendingBadge.textContent = data.total_pending_packages;
+                const mobileTotalPending = document.getElementById('mobile-total-pending');
+                if (mobileTotalPending) mobileTotalPending.textContent = data.total_pending_packages;
+            }
+            if (data.not_registered_packages !== undefined) {
+                const notRegisteredBadge = document.querySelector('.card-body p:nth-child(2) .badge');
+                if (notRegisteredBadge) notRegisteredBadge.textContent = data.not_registered_packages;
+                const mobileNotRegistered = document.getElementById('mobile-not-registered');
+                if (mobileNotRegistered) mobileNotRegistered.textContent = data.not_registered_packages;
+            }
+            if (data.missing_to_scan_packages !== undefined) {
+                const missingToScanBadge = document.querySelector('.card-body p:nth-child(3) .badge');
+                if (missingToScanBadge) missingToScanBadge.textContent = data.missing_to_scan_packages;
+                const mobileMissingToScan = document.getElementById('mobile-missing-to-scan');
+                if (mobileMissingToScan) mobileMissingToScan.textContent = data.missing_to_scan_packages;
+            }
+        }
+    })
+    .catch(() => {
+        showError('Error de comunicación con el servidor al registrar paquete desconocido.');
+    })
+    .finally(() => {
+        // Reanudar el escáner después de la confirmación o cancelación
+        startScannerLogic('reader');
+    });
+}
+
+// Hacer startScannerLogic global para el HTML inline
+window.startScannerLogic = startScannerLogic;
 
 function confirmUnknownPackage(code) {
     fetch('/register_unknown', { // Nueva ruta para registrar paquetes desconocidos
@@ -258,7 +376,11 @@ function confirmUnknownPackage(code) {
 function cancelUnknownPackage() {
     showScannerStatus("Registro de paquete desconocido cancelado.", 'info');
     // Reanudar el escáner
-    startScannerLogic('reader');
+    if (html5QrCodeInstance) {
+        html5QrCodeInstance.resume();
+    } else {
+        startScannerLogic('reader');
+    }
 }
 
 // Initial state setup (moved to index.html for automatic start)

@@ -99,8 +99,17 @@ def upload():
               'success')
         return redirect(url_for('main.upload'))
 
+    # Calcular los contadores para el footer
+    footer_counts = {'total_pending_packages': 0,
+                     'not_registered_packages': 0,
+                     'missing_to_scan_packages': 0}
+    if current_session:
+        from routes.records import get_updated_counts_for_session
+        footer_counts = get_updated_counts_for_session(current_session.id)
+
     return render_template('upload.html',
-                           current_session=current_session)
+                           current_session=current_session,
+                           footer_counts=footer_counts)
 
 
 @main_bp.route('/delete_current_excel', methods=['POST'])

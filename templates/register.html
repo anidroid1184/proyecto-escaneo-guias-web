@@ -6,19 +6,93 @@
       {{ form.hidden_tag() }}
       <div class="mb-3">
         {{ form.tracking.label(class="form-label") }}
-        {{ form.tracking(class="form-control form-control-lg") }}
-        <button type="button" class="btn btn-info mt-2 w-100" onclick="startScannerLogic('reader-tracking')">Escanear Tracking</button>
+        <div class="input-group mb-2">
+          {{ form.tracking(class="form-control form-control-lg", id="tracking")
+          }}
+          <button
+            type="button"
+            class="btn btn-info"
+            onclick="startScannerLogic('reader-tracking')"
+          >
+            Escanear
+          </button>
+        </div>
         <div id="reader-tracking" class="scanner-container mt-2"></div>
       </div>
       <div class="mb-3">
         {{ form.guia_internacional.label(class="form-label") }}
-        {{ form.guia_internacional(class="form-control form-control-lg") }}
-        <button type="button" class="btn btn-info mt-2 w-100" onclick="startScannerLogic('reader-guia-internacional')">Escanear Guía Internacional</button>
-        <div id="reader-guia-internacional" class="scanner-container mt-2"></div>
+        <div class="input-group mb-2">
+          {{ form.guia_internacional(class="form-control form-control-lg",
+          id="guia_internacional") }}
+          <button
+            type="button"
+            class="btn btn-info"
+            onclick="startScannerLogic('reader-guia-internacional')"
+          >
+            Escanear
+          </button>
+        </div>
+        <div
+          id="reader-guia-internacional"
+          class="scanner-container mt-2"
+        ></div>
       </div>
+      {% if request.args.get('tracking') or
+      request.args.get('guia_internacional') %}
+      <div class="mb-3">
+        <label class="form-label"
+          >¿A qué campo asignar el código detectado?</label
+        >
+        <div class="form-check form-switch d-flex align-items-center gap-2">
+          <input
+            class="form-check-input"
+            type="checkbox"
+            id="toggleTipo"
+            onchange="asignarCodigoToggle()"
+          />
+          <label class="form-check-label" for="toggleTipo" id="toggleLabel"
+            >Tracking</label
+          >
+        </div>
+        <button
+          class="btn btn-primary mt-2 w-100"
+          onclick="asignarCodigoYLimpiar()"
+        >
+          Asignar código
+        </button>
+      </div>
+      <script>
+        // Guardar el código detectado
+        const codigoDetectado =
+          "{{ request.args.get('tracking', request.args.get('guia_internacional', '')) }}";
+        // Por defecto, el toggle está en Tracking
+        function asignarCodigoToggle() {
+          const toggle = document.getElementById("toggleTipo");
+          const label = document.getElementById("toggleLabel");
+          if (toggle.checked) {
+            label.textContent = "Guía Internacional";
+          } else {
+            label.textContent = "Tracking";
+          }
+        }
+        function asignarCodigoYLimpiar() {
+          const toggle = document.getElementById("toggleTipo");
+          if (toggle.checked) {
+            document.getElementById("guia_internacional").value =
+              codigoDetectado;
+            document.getElementById("tracking").value = "";
+          } else {
+            document.getElementById("tracking").value = codigoDetectado;
+            document.getElementById("guia_internacional").value = "";
+          }
+        }
+      </script>
+      {% endif %}
       <div class="mb-3 d-grid gap-2">
         {{ form.submit(class="btn btn-primary btn-lg") }}
-        <a href="{{ url_for('main.index') }}" class="btn btn-secondary btn-lg">Cancelar</a>
+        <a href="{{ url_for('main.index') }}" class="btn btn-secondary btn-lg"
+          >Cancelar</a
+        >
       </div>
     </form>
   </div>
@@ -61,5 +135,35 @@
       msgDiv.innerHTML = `<div class="alert alert-success mt-2">Código <strong>${code}</strong> escaneado para <strong>${field}</strong>.</div>`;
     }
   }
+
+  // Envío automático del formulario si se llega con tracking o guia_internacional por GET
+  document.addEventListener('DOMContentLoaded', function() {
+    const tracking = document.getElementById('tracking');
+    const guia = document.getElementById('guia_internacional');
+    const form = document.querySelector('form');
+    // Si alguno de los campos tiene valor (vía GET), enviar el formulario automáticamente
+    if ((tracking && tracking.value) || (guia && guia.value)) {
+      setTimeout(() => { form.submit(); }, 300); // Pequeño delay para que el campo se pinte
+    }
+    // Mostrar alert si fue exitoso (flash message)
+    const successAlert = document.querySelector('.alert-success');
+    if (successAlert && successAlert.textContent.includes('registrada')) {
+      alert(successAlert.textContent);
+    }
+  });
 </script>
 {% endblock %}
+<script>
+  // Envío automático del formulario si se llega con tracking o guia_internacional por GET
+  document.addEventListener("DOMContentLoaded", function () {
+    const tracking = document.getElementById("tracking");
+    const guia = document.getElementById("guia_internacional");
+    const form = document.querySelector("form");
+    // Si alguno de los campos tiene valor (vía GET), enviar el formulario automáticamente
+    if ((tracking && tracking.value) || (guia && guia.value)) {
+      setTimeout(() => {
+        form.submit();
+      }, 200); // Pequeño delay para que el campo se pinte
+    }
+  });
+</script>

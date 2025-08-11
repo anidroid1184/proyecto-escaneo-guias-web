@@ -110,6 +110,8 @@ def scan():
     else:  # Si el estado actual NO es RECIBIDO (es decir, NO RECIBIDO, NO ESPERADO, NO ESCANEADO, etc.)
         guia_session_status.status = 'RECIBIDO'
         guia_session_status.timestamp_status_change = datetime.utcnow()
+        # Actualizar la fecha de recibido de la guía
+        guia.fecha_recibido = datetime.utcnow()
         db.session.commit()
 
         registro = Registro(guia_id=guia.id, session_id=g.session.id,
@@ -140,6 +142,7 @@ def register_unknown():
 
     data = request.get_json()
     scanned_code = data.get('code', '').strip()
+    code_type = data.get('code_type', 'guia_internacional')  # por defecto como guía internacional
     scanned_code = sanitize_string(scanned_code)
 
     if not scanned_code:
@@ -152,9 +155,10 @@ def register_unknown():
     ).first()
 
     if not guia:
-        guia = Guia(tracking=scanned_code,
-                    guia_internacional=None,  # Asumimos que es tracking si es desconocido
-                    fecha_recibido=datetime.utcnow())
+        if code_type == 'tracking':
+            guia = Guia(tracking=scanned_code, guia_internacional=None, fecha_recibido=datetime.utcnow())
+        else:
+            guia = Guia(tracking=None, guia_internacional=scanned_code, fecha_recibido=datetime.utcnow())
         db.session.add(guia)
         db.session.flush()  # Para obtener el ID de la guía antes de commitear
 
