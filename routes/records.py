@@ -12,17 +12,13 @@ from utils import sanitize_string
 
 # Función auxiliar para obtener los conteos actualizados (similar a la de scan.py)
 def get_updated_counts_for_session(session_id):
-    # Total de guías en la sesión que no han sido marcadas como RECIBIDO
-    total_pending = GuiaSessionStatus.query.filter(
-        GuiaSessionStatus.session_id == session_id,
-        GuiaSessionStatus.status != 'RECIBIDO'
-    ).count()
-    not_registered = GuiaSessionStatus.query.filter_by(
-        session_id=session_id, status='NO ESPERADO').count()
-    missing_to_scan = GuiaSessionStatus.query.filter_by(
-        session_id=session_id, status='NO RECIBIDO').count()
+    total_scanned = GuiaSessionStatus.query.filter_by(session_id=session_id, status='RECIBIDO').count()
+    total_packages = GuiaSessionStatus.query.filter_by(session_id=session_id).count()
+    not_registered = GuiaSessionStatus.query.filter_by(session_id=session_id, status='NO ESPERADO').count()
+    missing_to_scan = GuiaSessionStatus.query.filter_by(session_id=session_id, status='NO RECIBIDO').count()
     return {
-        'total_pending_packages': total_pending,
+        'total_scanned_packages': total_scanned,
+        'total_packages': total_packages,
         'not_registered_packages': not_registered,
         'missing_to_scan_packages': missing_to_scan
     }
@@ -143,6 +139,8 @@ def edit_guia_status(guia_id, session_id):
         guia_id=guia_id, session_id=session_id).first_or_404()
     guia = Guia.query.get(guia_id)
     current_session = Session.query.get(session_id)
+    # Obtener los conteos para el footer de la sesión actual
+    footer_counts = get_updated_counts_for_session(session_id)
 
     if request.method == 'POST':
         try:
@@ -203,7 +201,8 @@ def edit_guia_status(guia_id, session_id):
             return jsonify({'error': f'Error interno del servidor: {str(e)}'}), 500
     else:  # Esto maneja el método GET
         return render_template('edit_guia_status.html', guia_status=guia_status,
-                               guia=guia, current_session=current_session)
+                               guia=guia, current_session=current_session,
+                               footer_counts=footer_counts)
 
 
 @records_bp.route('/update_guia_fields', methods=['POST'])

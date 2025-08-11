@@ -47,15 +47,18 @@
 <script>
   // Actualizar los contadores del footer al cargar la página
   document.addEventListener('DOMContentLoaded', () => {
-    const totalPending = document.getElementById('mobile-total-pending');
-    const notRegistered = document.getElementById('mobile-not-registered');
-    const missingToScan = document.getElementById('mobile-missing-to-scan');
+    const escaneados = document.getElementById('footer-escaneados');
+    const faltantes = document.getElementById('footer-faltantes');
+    const noEsperados = document.getElementById('footer-no-esperados');
 
-    if (totalPending && notRegistered && missingToScan) {
-      totalPending.textContent = {{ footer_counts.total_pending_packages | default(0) }};
-      notRegistered.textContent = {{ footer_counts.not_registered_packages | default(0) }};
-      missingToScan.textContent = {{ footer_counts.missing_to_scan_packages | default(0) }};
+    const totalScanned = Number({{ footer_counts.total_scanned_packages | default(0) }});
+    const totalPackages = Number({{ footer_counts.total_packages | default(0) }});
+    const notRegistered = Number({{ footer_counts.not_registered_packages | default(0) }});
+    if (escaneados && faltantes && noEsperados) {
+      escaneados.textContent = totalScanned;
+      faltantes.textContent = (totalPackages - totalScanned) >= 0 ? (totalPackages - totalScanned) : 0;
+      noEsperados.textContent = notRegistered;
     }
   });
 </script>
-{% endblock %}
+{% endblock %} {% include 'footer_counter.html' %}

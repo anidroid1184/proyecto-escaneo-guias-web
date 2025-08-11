@@ -1,0 +1,27 @@
+<!-- templates/footer_counter.html -->
+<div
+  class="footer-counter fixed-bottom bg-dark text-white py-2 px-3 d-flex justify-content-center align-items-center"
+  style="z-index: 1050"
+>
+  <span
+    >Escaneados:
+    <span id="footer-escaneados" class="badge bg-primary"
+      >{{ footer_counts.total_scanned_packages | default(0) }}</span
+    ></span
+  >
+  <span class="mx-2">|</span>
+  <span
+    >Faltantes:
+    <span id="footer-faltantes" class="badge bg-danger"
+      >{{ (footer_counts.total_packages | default(0)) -
+      (footer_counts.total_scanned_packages | default(0)) }}</span
+    ></span
+  >
+  <span class="mx-2">|</span>
+  <span
+    >No esperados:
+    <span id="footer-no-esperados" class="badge bg-warning text-dark"
+      >{{ footer_counts.not_registered_packages | default(0) }}</span
+    ></span
+  >
+</div>

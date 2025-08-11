@@ -137,39 +137,29 @@ function submitCode(code) {
     })
     .then(data => {
         if (data.error) {
-            showError(data.message || data.error); // Mostrar el mensaje de error del backend
-            if (data.error === 'unknown_package_detected') { // Actualizado para el nuevo tipo de error
-                showUnknownPackagePrompt(code, data.message); // Mostrar popup de confirmación
+            showError(data.message || data.error);
+            if (data.error === 'unknown_package_detected') {
+                showUnknownPackagePrompt(code, data.message);
             }
         } else {
-            // Actualizar los conteos en tiempo real ANTES de mostrar el mensaje de éxito
-            if (data.total_pending_packages !== undefined) {
-                const totalPendingBadge = document.querySelector('.card-body p:nth-child(1) .badge');
-                if (totalPendingBadge) totalPendingBadge.textContent = data.total_pending_packages;
-                const mobileTotalPending = document.getElementById('mobile-total-pending');
-                if (mobileTotalPending) mobileTotalPending.textContent = data.total_pending_packages;
+            // Actualizar los contadores del footer en tiempo real
+            if (data.total_scanned_packages !== undefined && data.total_packages !== undefined) {
+                const footerEscaneados = document.getElementById('footer-escaneados');
+                const footerFaltantes = document.getElementById('footer-faltantes');
+                if (footerEscaneados) footerEscaneados.textContent = data.total_scanned_packages;
+                if (footerFaltantes) footerFaltantes.textContent = (data.total_packages - data.total_scanned_packages) >= 0 ? (data.total_packages - data.total_scanned_packages) : 0;
             }
             if (data.not_registered_packages !== undefined) {
-                const notRegisteredBadge = document.querySelector('.card-body p:nth-child(2) .badge');
-                if (notRegisteredBadge) notRegisteredBadge.textContent = data.not_registered_packages;
-                const mobileNotRegistered = document.getElementById('mobile-not-registered');
-                if (mobileNotRegistered) mobileNotRegistered.textContent = data.not_registered_packages;
+                const footerNoEsperados = document.getElementById('footer-no-esperados');
+                if (footerNoEsperados) footerNoEsperados.textContent = data.not_registered_packages;
             }
-            if (data.missing_to_scan_packages !== undefined) {
-                const missingToScanBadge = document.querySelector('.card-body p:nth-child(3) .badge');
-                if (missingToScanBadge) missingToScanBadge.textContent = data.missing_to_scan_packages;
-                const mobileMissingToScan = document.getElementById('mobile-missing-to-scan');
-                if (mobileMissingToScan) mobileMissingToScan.textContent = data.missing_to_scan_packages;
-            }
-            // Mostrar mensaje de éxito solo si es un nuevo código
             lastSuccessCode = code;
             successMessageVisible = true;
             showSuccess(data.message);
-            // Pausar el escáner brevemente después de un escaneo exitoso
             if (html5QrCodeInstance) {
                 setTimeout(() => {
                     html5QrCodeInstance.resume();
-                }, 1000); // Pausa de 1 segundo
+                }, 1000);
             }
         }
     })
@@ -233,8 +223,8 @@ function showUnknownPackagePrompt(code, message, messageDivId = 'scan-message') 
                 <p>${message}</p>
                 <p>¿Deseas registrar este paquete desconocido (<strong>${code}</strong>)?</p>
                 <div id="unknown-actions" class="d-flex flex-wrap justify-content-center gap-2 mt-3">
-                    <button class="btn btn-success" onclick="confirmUnknownPackage('${code}')">Registrar como Guía</button>
                     <button class="btn btn-info" onclick="confirmUnknownTracking('${code}')">Registrar como Tracking</button>
+                    <button class="btn btn-info" onclick="confirmUnknownPackage('${code}')">Registrar como Guía</button>
                     <button class="btn btn-secondary" onclick="cancelUnknownPackage()">Cancelar</button>
                 </div>
             </div>
@@ -255,24 +245,16 @@ function confirmUnknownPackage(code) {
             showError(data.message || data.error);
         } else {
             showSuccess(data.message);
-            // Actualizar los conteos en tiempo real
-            if (data.total_pending_packages !== undefined) {
-                const totalPendingBadge = document.querySelector('.card-body p:nth-child(1) .badge');
-                if (totalPendingBadge) totalPendingBadge.textContent = data.total_pending_packages;
-                const mobileTotalPending = document.getElementById('mobile-total-pending');
-                if (mobileTotalPending) mobileTotalPending.textContent = data.total_pending_packages;
+            // Actualizar los contadores del footer en tiempo real
+            if (data.total_scanned_packages !== undefined && data.total_packages !== undefined) {
+                const footerEscaneados = document.getElementById('footer-escaneados');
+                const footerFaltantes = document.getElementById('footer-faltantes');
+                if (footerEscaneados) footerEscaneados.textContent = data.total_scanned_packages;
+                if (footerFaltantes) footerFaltantes.textContent = (data.total_packages - data.total_scanned_packages) >= 0 ? (data.total_packages - data.total_scanned_packages) : 0;
             }
             if (data.not_registered_packages !== undefined) {
-                const notRegisteredBadge = document.querySelector('.card-body p:nth-child(2) .badge');
-                if (notRegisteredBadge) notRegisteredBadge.textContent = data.not_registered_packages;
-                const mobileNotRegistered = document.getElementById('mobile-not-registered');
-                if (mobileNotRegistered) mobileNotRegistered.textContent = data.not_registered_packages;
-            }
-            if (data.missing_to_scan_packages !== undefined) {
-                const missingToScanBadge = document.querySelector('.card-body p:nth-child(3) .badge');
-                if (missingToScanBadge) missingToScanBadge.textContent = data.missing_to_scan_packages;
-                const mobileMissingToScan = document.getElementById('mobile-missing-to-scan');
-                if (mobileMissingToScan) mobileMissingToScan.textContent = data.missing_to_scan_packages;
+                const footerNoEsperados = document.getElementById('footer-no-esperados');
+                if (footerNoEsperados) footerNoEsperados.textContent = data.not_registered_packages;
             }
         }
     })
@@ -298,24 +280,16 @@ function confirmUnknownTracking(code) {
             showError(data.message || data.error);
         } else {
             showSuccess(data.message);
-            // Actualizar los conteos en tiempo real
-            if (data.total_pending_packages !== undefined) {
-                const totalPendingBadge = document.querySelector('.card-body p:nth-child(1) .badge');
-                if (totalPendingBadge) totalPendingBadge.textContent = data.total_pending_packages;
-                const mobileTotalPending = document.getElementById('mobile-total-pending');
-                if (mobileTotalPending) mobileTotalPending.textContent = data.total_pending_packages;
+            // Actualizar los contadores del footer en tiempo real
+            if (data.total_scanned_packages !== undefined && data.total_packages !== undefined) {
+                const footerEscaneados = document.getElementById('footer-escaneados');
+                const footerFaltantes = document.getElementById('footer-faltantes');
+                if (footerEscaneados) footerEscaneados.textContent = data.total_scanned_packages;
+                if (footerFaltantes) footerFaltantes.textContent = (data.total_packages - data.total_scanned_packages) >= 0 ? (data.total_packages - data.total_scanned_packages) : 0;
             }
             if (data.not_registered_packages !== undefined) {
-                const notRegisteredBadge = document.querySelector('.card-body p:nth-child(2) .badge');
-                if (notRegisteredBadge) notRegisteredBadge.textContent = data.not_registered_packages;
-                const mobileNotRegistered = document.getElementById('mobile-not-registered');
-                if (mobileNotRegistered) mobileNotRegistered.textContent = data.not_registered_packages;
-            }
-            if (data.missing_to_scan_packages !== undefined) {
-                const missingToScanBadge = document.querySelector('.card-body p:nth-child(3) .badge');
-                if (missingToScanBadge) missingToScanBadge.textContent = data.missing_to_scan_packages;
-                const mobileMissingToScan = document.getElementById('mobile-missing-to-scan');
-                if (mobileMissingToScan) mobileMissingToScan.textContent = data.missing_to_scan_packages;
+                const footerNoEsperados = document.getElementById('footer-no-esperados');
+                if (footerNoEsperados) footerNoEsperados.textContent = data.not_registered_packages;
             }
         }
     })

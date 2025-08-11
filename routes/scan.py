@@ -41,17 +41,13 @@ def scan():
 
     # Función auxiliar para obtener los conteos actualizados
     def get_updated_counts():
-        # Total de guías en la sesión que no han sido marcadas como RECIBIDO
-        total_pending = GuiaSessionStatus.query.filter(
-            GuiaSessionStatus.session_id == g.session.id,
-            GuiaSessionStatus.status != 'RECIBIDO'
-        ).count()
-        not_registered = GuiaSessionStatus.query.filter_by(
-            session_id=g.session.id, status='NO ESPERADO').count()
-        missing_to_scan = GuiaSessionStatus.query.filter_by(
-            session_id=g.session.id, status='NO RECIBIDO').count()
+        total_scanned = GuiaSessionStatus.query.filter_by(session_id=g.session.id, status='RECIBIDO').count()
+        total_packages = GuiaSessionStatus.query.filter_by(session_id=g.session.id).count()
+        not_registered = GuiaSessionStatus.query.filter_by(session_id=g.session.id, status='NO ESPERADO').count()
+        missing_to_scan = GuiaSessionStatus.query.filter_by(session_id=g.session.id, status='NO RECIBIDO').count()
         return {
-            'total_pending_packages': total_pending,
+            'total_scanned_packages': total_scanned,
+            'total_packages': total_packages,
             'not_registered_packages': not_registered,
             'missing_to_scan_packages': missing_to_scan
         }
@@ -165,14 +161,16 @@ def register_unknown():
     guia_session_status = GuiaSessionStatus.query.filter_by(
         session_id=g.session.id, guia_id=guia.id).first()
 
+
+    # Siempre registrar como NO ESPERADO, sin importar si es tracking o guía
     if not guia_session_status:
         guia_status = GuiaSessionStatus(session_id=g.session.id,
                                         guia_id=guia.id,
-                                        status='NO ESPERADO')
+                                        status='NO ESPERADO',
+                                        timestamp_status_change=datetime.utcnow())
         db.session.add(guia_status)
         db.session.commit()
     else:
-        # Si ya existe, y su estado no es 'NO ESPERADO', lo actualizamos
         if guia_session_status.status != 'NO ESPERADO':
             guia_session_status.status = 'NO ESPERADO'
             guia_session_status.timestamp_status_change = datetime.utcnow()
@@ -185,17 +183,13 @@ def register_unknown():
 
     # Función auxiliar para obtener los conteos actualizados
     def get_updated_counts():
-        # Total de guías en la sesión que no han sido marcadas como RECIBIDO
-        total_pending = GuiaSessionStatus.query.filter(
-            GuiaSessionStatus.session_id == g.session.id,
-            GuiaSessionStatus.status != 'RECIBIDO'
-        ).count()
-        not_registered = GuiaSessionStatus.query.filter_by(
-            session_id=g.session.id, status='NO ESPERADO').count()
-        missing_to_scan = GuiaSessionStatus.query.filter_by(
-            session_id=g.session.id, status='NO RECIBIDO').count()
+        total_scanned = GuiaSessionStatus.query.filter_by(session_id=g.session.id, status='RECIBIDO').count()
+        total_packages = GuiaSessionStatus.query.filter_by(session_id=g.session.id).count()
+        not_registered = GuiaSessionStatus.query.filter_by(session_id=g.session.id, status='NO ESPERADO').count()
+        missing_to_scan = GuiaSessionStatus.query.filter_by(session_id=g.session.id, status='NO RECIBIDO').count()
         return {
-            'total_pending_packages': total_pending,
+            'total_scanned_packages': total_scanned,
+            'total_packages': total_packages,
             'not_registered_packages': not_registered,
             'missing_to_scan_packages': missing_to_scan
         }
