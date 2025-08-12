@@ -143,11 +143,13 @@ function submitCode(code) {
             }
         } else {
             // Actualizar los contadores del footer en tiempo real
-            if (data.total_scanned_packages !== undefined && data.total_packages !== undefined) {
+            if (data.total_scanned_packages !== undefined) {
                 const footerEscaneados = document.getElementById('footer-escaneados');
-                const footerFaltantes = document.getElementById('footer-faltantes');
                 if (footerEscaneados) footerEscaneados.textContent = data.total_scanned_packages;
-                if (footerFaltantes) footerFaltantes.textContent = (data.total_packages - data.total_scanned_packages) >= 0 ? (data.total_packages - data.total_scanned_packages) : 0;
+            }
+            if (data.total_packages !== undefined && data.total_scanned_packages !== undefined) {
+                const footerFaltantes = document.getElementById('footer-faltantes');
+                if (footerFaltantes) footerFaltantes.textContent = (data.total_packages - data.total_scanned_packages);
             }
             if (data.not_registered_packages !== undefined) {
                 const footerNoEsperados = document.getElementById('footer-no-esperados');
@@ -245,12 +247,13 @@ function confirmUnknownPackage(code) {
             showError(data.message || data.error);
         } else {
             showSuccess(data.message);
-            // Actualizar los contadores del footer en tiempo real
-            if (data.total_scanned_packages !== undefined && data.total_packages !== undefined) {
+            if (data.total_scanned_packages !== undefined) {
                 const footerEscaneados = document.getElementById('footer-escaneados');
-                const footerFaltantes = document.getElementById('footer-faltantes');
                 if (footerEscaneados) footerEscaneados.textContent = data.total_scanned_packages;
-                if (footerFaltantes) footerFaltantes.textContent = (data.total_packages - data.total_scanned_packages) >= 0 ? (data.total_packages - data.total_scanned_packages) : 0;
+            }
+            if (data.total_packages !== undefined && data.total_scanned_packages !== undefined) {
+                const footerFaltantes = document.getElementById('footer-faltantes');
+                if (footerFaltantes) footerFaltantes.textContent = (data.total_packages - data.total_scanned_packages);
             }
             if (data.not_registered_packages !== undefined) {
                 const footerNoEsperados = document.getElementById('footer-no-esperados');
@@ -280,12 +283,13 @@ function confirmUnknownTracking(code) {
             showError(data.message || data.error);
         } else {
             showSuccess(data.message);
-            // Actualizar los contadores del footer en tiempo real
-            if (data.total_scanned_packages !== undefined && data.total_packages !== undefined) {
+            if (data.total_scanned_packages !== undefined) {
                 const footerEscaneados = document.getElementById('footer-escaneados');
-                const footerFaltantes = document.getElementById('footer-faltantes');
                 if (footerEscaneados) footerEscaneados.textContent = data.total_scanned_packages;
-                if (footerFaltantes) footerFaltantes.textContent = (data.total_packages - data.total_scanned_packages) >= 0 ? (data.total_packages - data.total_scanned_packages) : 0;
+            }
+            if (data.total_packages !== undefined && data.total_scanned_packages !== undefined) {
+                const footerFaltantes = document.getElementById('footer-faltantes');
+                if (footerFaltantes) footerFaltantes.textContent = (data.total_packages - data.total_scanned_packages);
             }
             if (data.not_registered_packages !== undefined) {
                 const footerNoEsperados = document.getElementById('footer-no-esperados');

@@ -15,12 +15,10 @@ def get_updated_counts_for_session(session_id):
     total_scanned = GuiaSessionStatus.query.filter_by(session_id=session_id, status='RECIBIDO').count()
     total_packages = GuiaSessionStatus.query.filter_by(session_id=session_id).count()
     not_registered = GuiaSessionStatus.query.filter_by(session_id=session_id, status='NO ESPERADO').count()
-    missing_to_scan = GuiaSessionStatus.query.filter_by(session_id=session_id, status='NO RECIBIDO').count()
     return {
         'total_scanned_packages': total_scanned,
         'total_packages': total_packages,
-        'not_registered_packages': not_registered,
-        'missing_to_scan_packages': missing_to_scan
+        'not_registered_packages': not_registered
     }
 
 

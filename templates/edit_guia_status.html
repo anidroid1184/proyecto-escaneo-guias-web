@@ -157,6 +157,20 @@
                 if (data.guia_internacional !== undefined) {
                     document.getElementById('display-guia-internacional').textContent = data.guia_internacional || 'N/A';
                 }
+                // --- Actualizar footer ---
+                if (data.total_scanned_packages !== undefined) {
+                    const footerEscaneados = document.getElementById('footer-escaneados');
+                    if (footerEscaneados) footerEscaneados.textContent = data.total_scanned_packages;
+                }
+                if (data.total_packages !== undefined && data.total_scanned_packages !== undefined) {
+                    const footerFaltantes = document.getElementById('footer-faltantes');
+                    if (footerFaltantes) footerFaltantes.textContent = (data.total_packages - data.total_scanned_packages);
+                }
+                if (data.not_registered_packages !== undefined) {
+                    const footerNoEsperados = document.getElementById('footer-no-esperados');
+                    if (footerNoEsperados) footerNoEsperados.textContent = data.not_registered_packages;
+                }
+                // --- Fin actualización footer ---
             }
         })
         .catch(error => {
@@ -229,7 +243,7 @@
             }
             return res.json();
         })
-        .then data => {
+        .then(data => {
             if (data.error) {
                 showErrorEdit(data.message || data.error);
             } else {
@@ -241,6 +255,20 @@
                         statusElement.nextSibling.textContent = data.new_status;
                     }
                 }
+                // --- Actualizar footer ---
+                if (data.total_scanned_packages !== undefined) {
+                    const footerEscaneados = document.getElementById('footer-escaneados');
+                    if (footerEscaneados) footerEscaneados.textContent = data.total_scanned_packages;
+                }
+                if (data.total_packages !== undefined && data.total_scanned_packages !== undefined) {
+                    const footerFaltantes = document.getElementById('footer-faltantes');
+                    if (footerFaltantes) footerFaltantes.textContent = (data.total_packages - data.total_scanned_packages);
+                }
+                if (data.not_registered_packages !== undefined) {
+                    const footerNoEsperados = document.getElementById('footer-no-esperados');
+                    if (footerNoEsperados) footerNoEsperados.textContent = data.not_registered_packages;
+                }
+                // --- Fin actualización footer ---
                 // Redirigir si el backend lo indica
                 if (data.redirect_to_records) {
                     window.location.href = "{{ url_for('records.registros', session_id=current_session.id) }}";

@@ -176,9 +176,8 @@ def register_unknown():
             guia_session_status.timestamp_status_change = datetime.utcnow()
             db.session.commit()
 
-    registro = Registro(guia_id=guia.id, session_id=g.session.id,
-                        tipo='entrada')
-    db.session.add(registro)
+
+    # No crear un registro de tipo 'entrada' para NO ESPERADO, solo marcar el estado
     db.session.commit()
 
     # Función auxiliar para obtener los conteos actualizados
