@@ -103,7 +103,26 @@ def scan():
         }
         response_data.update(get_updated_counts())
         return jsonify(response_data)
-    else:  # Si el estado actual NO es RECIBIDO (es decir, NO RECIBIDO, NO ESPERADO, NO ESCANEADO, etc.)
+    elif guia_session_status.status == 'NO ESPERADO':
+        # Si es NO ESPERADO, no permitir cambiar a RECIBIDO desde el escaneo
+        # Pero sí incrementar el contador de escaneos exitosos (total_scanned_packages)
+        # Creamos un registro de escaneo exitoso para depuración
+        registro = Registro(guia_id=guia.id, session_id=g.session.id, tipo='entrada')
+        db.session.add(registro)
+        db.session.commit()
+        response_data = {
+            'tracking': guia.tracking,
+            'guia_internacional': guia.guia_internacional,
+            'fecha_recibido': (guia.fecha_recibido.strftime('%Y-%m-%d %H:%M:%S')
+                               if guia.fecha_recibido else ''),
+            'tipo': 'entrada',
+            'timestamp': registro.timestamp.strftime('%Y-%m-%d %H:%M:%S'),
+            'status': 'NO ESPERADO',
+            'message': (f'La guía {guia.guia_internacional or guia.tracking} es NO ESPERADO en esta sesión. Si deseas marcarla como RECIBIDO, hazlo desde la vista de edición.')
+        }
+        response_data.update(get_updated_counts())
+        return jsonify(response_data)
+    else:  # Si el estado actual NO es RECIBIDO ni NO ESPERADO (es decir, NO RECIBIDO, NO ESCANEADO, etc.)
         guia_session_status.status = 'RECIBIDO'
         guia_session_status.timestamp_status_change = datetime.utcnow()
         # Actualizar la fecha de recibido de la guía

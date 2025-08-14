@@ -51,11 +51,14 @@ def register():
                 guia_internacional=guia_internacional).first()
 
         if existing_guia:
+            # Si la guía ya existe globalmente, no permitir registro manual global
             flash((f'La guía con Tracking "{existing_guia.tracking or "N/A"}" o '
                    f'Guía Internacional "{existing_guia.guia_internacional or "N/A"}" '
                    'ya está registrada globalmente. Por favor, use la función de escaneo en la página principal para procesarla.'), 'danger')
             return render_template('register.html', form=form)
 
+        # --- Refuerzo: El registro manual solo afecta la sesión activa ---
+        # Se crea la guía globalmente, pero la autorización (GuiaSessionStatus) es SOLO para la sesión activa.
         guia = Guia(
             tracking=tracking,
             guia_internacional=guia_internacional,
@@ -64,6 +67,7 @@ def register():
         db.session.add(guia)
         db.session.flush()
 
+        # Solo se crea GuiaSessionStatus para la sesión activa
         guia_status = GuiaSessionStatus(session_id=g.session.id,
                                         guia_id=guia.id,
                                         status='NO ESPERADO')
@@ -74,6 +78,7 @@ def register():
         db.session.add(registro)
         db.session.commit()
 
-        flash('Guía registrada y entrada registrada exitosamente.', 'success')
+        # Comentario: En futuras sesiones, este código volverá a ser NO ESPERADO hasta que se autorice manualmente de nuevo.
+        flash('Guía registrada y entrada registrada exitosamente SOLO para esta sesión. En futuras sesiones, este código será tratado como NO ESPERADO hasta que se autorice nuevamente.', 'success')
         return redirect(url_for('main.index'))
     return render_template('register.html', form=form)
